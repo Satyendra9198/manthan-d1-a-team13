@@ -66,7 +66,7 @@ Assumptions are tagged `[A-nn]`, transitions `T-nn`, failure modes `F-nn` and DB
 ## Commands
 - Build and test the backend: `cd backend && ./mvnw verify` (Windows: `mvnw.cmd verify`). Docker must be running (Testcontainers).
 - Run the full stack: `docker compose up -d --build` → web http://localhost:8080, API http://localhost:8000, pgAdmin http://localhost:5050, Grafana http://localhost:3000, Prometheus http://localhost:9090, gateway http://localhost:8100.
-- With streaming: `docker compose --profile streaming up -d` (Kafka, notifier, Mailpit http://localhost:8025).
+- With streaming: `RR_KAFKA_ENABLED=true docker compose --profile streaming up -d` (PowerShell: `$env:RR_KAFKA_ENABLED='true'; docker compose --profile streaming up -d`) → Kafka, notifier, Mailpit http://localhost:8025. Without `RR_KAFKA_ENABLED=true` the API does not publish and no mail is sent.
 - Seed data: `docker compose run --rm app --spring.profiles.active=seed --seed.as-of=YYYY-MM-DD --seed.reset=true`
 - Frontend: `cd frontend && npm run dev` (proxies `/api` to :8000) · `npx playwright test`
 - Gateway chaos: `infra/scripts/chaos.ps1 <healthy|slow|flaky|lost-responses|blackhole|declines>`

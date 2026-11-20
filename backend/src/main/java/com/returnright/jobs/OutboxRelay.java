@@ -19,7 +19,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Publishes outbox_events to Kafka (ADR-002). At-least-once: rows are marked published only after the broker acks;
- * consumers dedupe on the event id (Kafka message key = outbox id).
+ * consumers dedupe on {@code event_id} (the outbox id, inside the JSON). The Kafka message key is the return id, so
+ * events for one return stay ordered on one partition.
  */
 @Component
 public class OutboxRelay implements AutoCloseable {
