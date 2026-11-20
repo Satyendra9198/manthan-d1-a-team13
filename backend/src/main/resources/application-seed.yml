@@ -1,0 +1,20 @@
+# Seed profile: run once, then exit. Uses the schema owner (needs TRUNCATE for --seed.reset).
+spring:
+  main:
+    web-application-type: none
+  datasource:
+    username: ${RR_DB_OWNER_USER:rr_owner}
+    password: ${RR_DB_OWNER_PASSWORD:rr_owner_dev_pw}
+
+rr:
+  jobs:
+    enabled: false
+
+seed:
+  random-seed: 20261120
+  as-of: ""            # YYYY-MM-DD (IST); empty = today
+  reset: false
+  customers: 500
+  orders: 2000
+  return-rate: 0.12
+  staff-password: ${RR_SEED_STAFF_PASSWORD:ReturnRight#2026}

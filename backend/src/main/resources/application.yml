@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: returnright-api
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${RR_DB_URL:jdbc:postgresql://localhost:5434/returnright}
+    username: ${RR_DB_USER:rr_app}
+    password: ${RR_DB_PASSWORD:rr_app_dev_pw}
+    hikari:
+      maximum-pool-size: 20
+  flyway:
+    # migrations run as the schema owner; the app itself runs as least-privilege rr_app
+    user: ${RR_DB_OWNER_USER:rr_owner}
+    password: ${RR_DB_OWNER_PASSWORD:rr_owner_dev_pw}
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  data:
+    redis:
+      url: ${RR_REDIS_URL:redis://localhost:6379}
+      timeout: 500ms
+  kafka:
+    bootstrap-servers: ${RR_KAFKA_BOOTSTRAP:localhost:9092}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+  jackson:
+    property-naming-strategy: SNAKE_CASE   # API contract is snake_case
+    default-property-inclusion: always
+
+server:
+  port: ${PORT:8000}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: returnright-api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    level: "%5p [cid:%X{correlationId:-}]"
+
+rr:
+  business-tz: Asia/Kolkata
+  finance-threshold-paise: 1000000   # [A-12] strictly greater than Rs 10,000.00
+  flag-threshold: 3                  # [A-14] more than 3 requests in the window flags
+  flag-window-days: 30
+  label-ttl-days: 14                 # [A-19]
+  jwt:
+    secret: ${RR_JWT_SECRET:dev-only-change-me-0123456789abcdef0123456789abcdef}
+    issuer: returnright
+    customer-ttl-minutes: 60
+    staff-ttl-minutes: 480
+  security:
+    login-max-failures: 5
+    login-lockout-seconds: 900
+    lookup-per-minute: 5
+    cors-origins: ${RR_CORS_ORIGINS:http://localhost:5173,http://localhost:8080}
+  gateway:
+    url: ${RR_GATEWAY_URL:http://localhost:8100}
+    timeout-ms: ${RR_GATEWAY_TIMEOUT_MS:3000}
+  jobs:
+    enabled: ${RR_JOBS_ENABLED:true}
+    reconciler-interval-ms: 15000
+    stale-pending-seconds: 60
+    label-expiry-interval-ms: 300000
+    outbox-interval-ms: 2000
+  kafka:
+    enabled: ${RR_KAFKA_ENABLED:false}
+    topic: returnright.events
+  warehouse:
+    name: ReturnRight Returns Centre
+    line1: Plot 42, Sector 3, Pithampur Industrial Area
+    city: Indore
+    pincode: "454775"

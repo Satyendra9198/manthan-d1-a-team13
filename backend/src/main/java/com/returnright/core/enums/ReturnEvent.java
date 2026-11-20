@@ -1,0 +1,19 @@
+package com.returnright.core.enums;
+
+public enum ReturnEvent {
+    SUBMIT,
+    AUTO_APPROVE,
+    MARK_SHIPPED,
+    SCAN_RECEIVE,
+    CANCEL,
+    LABEL_EXPIRE,
+    INSPECT_ITEM,
+    REGRADE_ITEM,
+    COMPLETE_INSPECTION,
+    ROUTE,
+    FINANCE_APPROVE,
+    FINANCE_REJECT,
+    REFUND_SUCCEEDED,
+    REFUND_FAILED,
+    RETRY_REFUND
+}

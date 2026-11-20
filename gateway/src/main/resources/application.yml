@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: mock-gateway
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    # Own store, separate from ReturnRight's Postgres (ADR-002): reconciliation is real.
+    url: ${GATEWAY_DB_URL:jdbc:h2:file:./data/gateway;AUTO_SERVER=FALSE}
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  h2:
+    console:
+      enabled: false
+
+server:
+  port: ${PORT:8100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: mock-gateway
+
+gateway:
+  admin-token: ${GATEWAY_ADMIN_TOKEN:dev-admin-token}
+  env: ${GATEWAY_ENV:dev}
+  faults:
+    latency-ms-min: ${LATENCY_MS_MIN:50}
+    latency-ms-max: ${LATENCY_MS_MAX:200}
+    timeout-rate: ${FAULT_TIMEOUT_RATE:0.0}
+    timeout-sleep-ms: ${TIMEOUT_SLEEP_MS:10000}
+    error-rate: ${FAULT_ERROR_RATE:0.0}
+    error-after-commit-rate: ${FAULT_ERROR_AFTER_COMMIT_RATE:0.0}
+    drop-response-rate: ${FAULT_DROP_RESPONSE_RATE:0.0}
+    decline-rate: ${FAULT_DECLINE_RATE:0.0}
+    processing-rate: ${FAULT_PROCESSING_RATE:0.0}
+    settle-seconds: ${SETTLE_SECONDS:20}
+    seed: ${FAULT_SEED:42}
