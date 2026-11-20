@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -22,6 +23,25 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(OrderNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException ex) {
     return error(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", ex.getMessage(), List.of());
+  }
+
+  @ExceptionHandler(ItemSelectionRejectedException.class)
+  public ResponseEntity<ErrorResponse> handleItemSelectionRejected(
+      ItemSelectionRejectedException ex) {
+    return error(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        "SELECTION_NOT_RETURNABLE",
+        ex.getMessage(),
+        ex.getProblems());
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+    return error(
+        HttpStatus.BAD_REQUEST,
+        "MALFORMED_REQUEST",
+        "Request body is missing or is not valid JSON of the expected shape",
+        List.of());
   }
 
   @ExceptionHandler(IllegalTransitionException.class)
