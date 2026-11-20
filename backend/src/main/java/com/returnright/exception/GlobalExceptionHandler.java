@@ -19,6 +19,11 @@ public class GlobalExceptionHandler {
     this.clock = clock;
   }
 
+  @ExceptionHandler(OrderNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException ex) {
+    return error(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", ex.getMessage(), List.of());
+  }
+
   @ExceptionHandler(IllegalTransitionException.class)
   public ResponseEntity<ErrorResponse> handleIllegalTransition(IllegalTransitionException ex) {
     return error(HttpStatus.CONFLICT, "ILLEGAL_TRANSITION", ex.getMessage(), List.of());
