@@ -1,17 +1,33 @@
 spring:
   application:
     name: returnright-backend
+  config:
+    # Local development: values from backend/.env (copy .env.example). Real env vars win.
+    import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/returnright}
-    username: ${DB_USERNAME:returnright}
-    password: ${DB_PASSWORD:change-me}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  flyway:
+    enabled: true
 
 server:
   port: ${SERVER_PORT:8080}
+
+returnright:
+  gateway:
+    base-url: ${GATEWAY_BASE_URL:http://localhost:8090}
+    timeout: ${GATEWAY_TIMEOUT:PT3S}
+  label:
+    validity: P14D
+  staff:
+    warehouse-password: ${WAREHOUSE_PASSWORD}
+    finance-password: ${FINANCE_PASSWORD}
+    operations-password: ${OPERATIONS_PASSWORD}
 
 management:
   endpoints:
