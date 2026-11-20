@@ -1,0 +1,24 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "ReturnRight - read-only (rr_readonly)",
+      "Group": "ReturnRight",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "returnright",
+      "Username": "rr_readonly",
+      "SSLMode": "disable",
+      "Comment": "Password: rr_readonly_dev_pw (dev only). SELECT on all tables."
+    },
+    "2": {
+      "Name": "ReturnRight - owner (rr_owner)",
+      "Group": "ReturnRight",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "returnright",
+      "Username": "rr_owner",
+      "SSLMode": "disable",
+      "Comment": "Password: rr_owner_dev_pw (dev only). Schema owner - ledger/audit are still append-only via triggers."
+    }
+  }
+}
