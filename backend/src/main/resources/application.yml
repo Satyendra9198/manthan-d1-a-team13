@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: returnright-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/returnright}
+    username: ${DB_USERNAME:returnright}
+    password: ${DB_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
