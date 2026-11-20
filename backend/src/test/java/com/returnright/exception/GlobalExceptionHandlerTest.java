@@ -13,6 +13,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 class GlobalExceptionHandlerTest {
 
@@ -80,5 +81,26 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody().code()).isEqualTo("SELECTION_NOT_RETURNABLE");
     assertThat(response.getBody().details()).isEqualTo(problems);
+  }
+
+  @Test
+  void invalidPhotosAreReportedAsUnprocessableWithEveryProblem() {
+    List<String> problems = List.of("item-1: Photos must be JPEG, PNG or WebP images.");
+
+    ResponseEntity<ErrorResponse> response =
+        handler.handleInvalidPhotos(new InvalidPhotosException(problems));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getBody().code()).isEqualTo("INVALID_PHOTOS");
+    assertThat(response.getBody().details()).isEqualTo(problems);
+  }
+
+  @Test
+  void oversizedUploadIsReportedAsPayloadTooLarge() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleUploadTooLarge(new MaxUploadSizeExceededException(5 * 1024 * 1024));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+    assertThat(response.getBody().code()).isEqualTo("UPLOAD_TOO_LARGE");
   }
 }
