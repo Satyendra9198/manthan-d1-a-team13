@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
     return error(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", ex.getMessage(), List.of());
   }
 
+  @ExceptionHandler(ReturnNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleReturnNotFound(ReturnNotFoundException ex) {
+    return error(HttpStatus.NOT_FOUND, "RETURN_NOT_FOUND", ex.getMessage(), List.of());
+  }
+
   @ExceptionHandler(InvalidCredentialsException.class)
   public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
     return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), List.of());

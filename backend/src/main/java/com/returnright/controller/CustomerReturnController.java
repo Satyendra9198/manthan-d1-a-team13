@@ -2,8 +2,11 @@ package com.returnright.controller;
 
 import com.returnright.model.domain.PhotoUpload;
 import com.returnright.model.dto.request.SubmitReturnRequest;
+import com.returnright.model.dto.request.TrackReturnRequest;
 import com.returnright.model.dto.response.ReturnCreatedResponse;
+import com.returnright.model.dto.response.ReturnTrackingResponse;
 import com.returnright.service.ReturnSubmissionService;
+import com.returnright.service.ReturnTrackingService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,13 +18,14 @@ import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
-/** Customer wizard, final step: submit the return with its photos. */
+/** Customer returns: submit one (wizard final step) and track it afterwards. */
 @RestController
 @RequestMapping("/api/v1/customer/returns")
 public class CustomerReturnController {
@@ -30,9 +34,13 @@ public class CustomerReturnController {
   static final String PHOTO_PART_PREFIX = "photos.";
 
   private final ReturnSubmissionService returnSubmissionService;
+  private final ReturnTrackingService returnTrackingService;
 
-  public CustomerReturnController(ReturnSubmissionService returnSubmissionService) {
+  public CustomerReturnController(
+      ReturnSubmissionService returnSubmissionService,
+      ReturnTrackingService returnTrackingService) {
     this.returnSubmissionService = returnSubmissionService;
+    this.returnTrackingService = returnTrackingService;
   }
 
   /**
@@ -50,6 +58,17 @@ public class CustomerReturnController {
         returnSubmissionService.submit(request, extractPhotos(multipartRequest));
     return ResponseEntity.created(URI.create("/api/v1/customer/returns/" + created.rmaNumber()))
         .body(created);
+  }
+
+  /**
+   * "Track my return" and the return status pages (in transit, refunded, rejected). POST so the
+   * email stays out of URLs and logs.
+   *
+   * @return 200 with the return, 400 if a field is invalid, 404 if no return matches
+   */
+  @PostMapping("/track")
+  public ReturnTrackingResponse trackReturn(@Valid @RequestBody TrackReturnRequest request) {
+    return returnTrackingService.track(request);
   }
 
   private static List<PhotoUpload> extractPhotos(MultipartHttpServletRequest multipartRequest) {
