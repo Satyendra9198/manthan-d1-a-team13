@@ -18,3 +18,6 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 }
+
+import { resetDashboardMock } from '@/api/mocks/dashboard.mock'
+beforeEach(() => resetDashboardMock())

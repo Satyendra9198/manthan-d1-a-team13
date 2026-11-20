@@ -2,8 +2,9 @@ import { Navigate, type RouteObject } from 'react-router'
 import { AppLayout } from '@/components/layout/app-layout'
 import { CustomerLayout } from '@/components/layout/customer-layout'
 import { DEFAULT_PATH } from '@/config/navigation'
-import { AuditLogPage } from '@/pages/audit-log-page'
-import { DashboardPage } from '@/pages/dashboard-page'
+import { AuditLogPage } from '@/pages/manager/audit-log/audit-log-page'
+import { CustomerFlagPage } from '@/pages/manager/customer-flag/customer-flag-page'
+import { DashboardPage } from '@/pages/manager/dashboard/dashboard-page'
 import { FinanceQueuePage } from '@/pages/finance/finance-queue/finance-queue-page'
 import { ReturnStatusPage } from '@/pages/customer/return-status/return-status-page'
 import { RefundsLedgerPage } from '@/pages/finance/refunds-ledger/refunds-ledger-page'
@@ -26,6 +27,7 @@ export const routes: RouteObject[] = [
       { path: 'finance', element: <FinanceQueuePage /> },
       { path: 'refunds', element: <RefundsLedgerPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'dashboard/customers/:customerId', element: <CustomerFlagPage /> },
       { path: 'audit', element: <AuditLogPage /> },
       { path: '*', element: <Navigate to={DEFAULT_PATH} replace /> },
     ],

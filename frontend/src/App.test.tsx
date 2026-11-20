@@ -31,7 +31,7 @@ describe('App layout & navigation', () => {
   it.each([
     ['Finance queue', '/finance', 'Refunds awaiting approval', 'Finance reviewer'],
     ['Refunds & ledger', '/refunds', 'Refunds and ledger', 'Finance reviewer'],
-    ['Dashboard', '/dashboard', 'Dashboard', 'Operations manager'],
+    ['Dashboard', '/dashboard', 'Returns overview', 'Operations manager'],
     ['Audit log', '/audit', 'Audit log', 'Operations manager'],
   ])('clicking %s opens %s', async (label, path, heading, persona) => {
     const user = userEvent.setup()
@@ -40,7 +40,7 @@ describe('App layout & navigation', () => {
     expect(router.state.location.pathname).toBe(path)
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByText(persona)).toBeInTheDocument()
+    expect(screen.getByText('Signed in as').parentElement).toHaveTextContent(`Signed in as${persona}`)
   })
 
   it('redirects unknown URLs to the default screen', () => {

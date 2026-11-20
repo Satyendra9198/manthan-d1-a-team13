@@ -161,7 +161,9 @@ describe('mock backend: audit log', () => {
     await api.submitDecision(HEADPHONES.id, { grade: 'C', decision: 'reject', reason: 'other', notes: 'Water damage' }, 'k1')
     await api.submitDecision(LINEN.id, accept, 'k2')
 
-    const steps = getMockAuditLog().map((e) => `${e.returnId}:${e.from}->${e.to}`)
+    const steps = getMockAuditLog()
+      .filter((e) => e.action === 'STATUS_CHANGED' || e.action === 'GRADED')
+      .map((e) => `${e.returnId}:${e.from}->${e.to}`)
     expect(steps).toEqual([
       'ret_00742:in_transit->received',
       'ret_00742:received->inspected',

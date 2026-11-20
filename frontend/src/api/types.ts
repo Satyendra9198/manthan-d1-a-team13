@@ -267,3 +267,126 @@ export type LedgerResponse = {
   totals: { debitPaise: number; creditPaise: number }
   balanced: boolean
 }
+
+export type DashboardPeriodDays = 7 | 14 | 30
+
+/** GET /dashboard?days=30: manager overview. Rates are 0–1; null = no data. */
+export type DashboardResponse = {
+  periodDays: DashboardPeriodDays
+  generatedAt: string
+  /** Orders placed in the period. */
+  orders: number
+  returnRate: number | null
+  /** Mean days from request to refund or reject. */
+  avgCycleDays: number | null
+  /** Successful gateway attempts / all attempts. */
+  refundSuccessRate: number | null
+  byCategory: {
+    category: ProductCategory
+    label: string
+    orders: number
+    returns: number
+    /** null for categories that can't be returned (innerwear, perishables). */
+    rate: number | null
+  }[]
+  topReasons: { reason: string; label: string; returns: number; share: number }[]
+  /** Fixed rule: more than 3 returns in the last 30 days, whatever the period. */
+  flaggedCustomers: {
+    customerId: string
+    name: string
+    returns30d: number
+    refundedPaise: number
+    lastReturnAt: string
+  }[]
+}
+
+export type CustomerReturnStatus = 'in_progress' | 'finance_review' | 'refunded' | 'rejected'
+
+export type FlagReview = {
+  action: 'keep' | 'clear'
+  note: string
+  at: string
+  by: string
+}
+
+/** GET /customers/:customerId/returns-profile */
+export type CustomerProfile = {
+  customerId: string
+  name: string
+  email: string
+  customerSince: string
+  flag: {
+    /** Flag in force right now (over the limit and not cleared since the last return). */
+    active: boolean
+    returns30d: number
+    /** The request that took the count over 3; null if never over. */
+    raisedAt: string | null
+    raisedBy: 'system'
+    lastReview: FlagReview | null
+  }
+  stats: {
+    refundedPaise: number
+    refundedCount: number
+    pendingFinancePaise: number
+    pendingFinanceRmas: string[]
+  }
+  /** Returns requested in the last 30 days, newest first. */
+  returns: {
+    rmaNumber: string
+    itemName: string
+    reason: string
+    grade: Grade | null
+    status: CustomerReturnStatus
+    refundPaise: number
+    requestedAt: string
+  }[]
+}
+
+/**
+ * POST /customers/:customerId/flag-review
+ * keep → FLAG_REVIEWED audit row; clear → FLAG_CHANGED audit row and the flag is off until a
+ * new return takes the 30-day count over 3 again.
+ */
+export type FlagReviewRequest = { action: 'keep' | 'clear'; note: string }
+
+export type AuditAction =
+  | 'STATUS_CHANGED'
+  | 'GRADED'
+  | 'REFUND_ROUTED'
+  | 'REFUND_APPROVED'
+  | 'REFUND_DECLINED'
+  | 'REFUND_ATTEMPTED'
+  | 'FLAG_CHANGED'
+  | 'FLAG_REVIEWED'
+
+export type AuditActor = 'customer' | 'warehouse_agent' | 'finance_reviewer' | 'operations_manager' | 'system'
+
+/** One audit row. Insert-only: rows are never edited or deleted. */
+export type AuditLogEntry = {
+  id: string
+  at: string
+  /** Rows written by the same API call share a request ID. */
+  requestId: string
+  action: AuditAction
+  actor: AuditActor
+  /** Person's name when known, e.g. "Vikram". */
+  actorName: string | null
+  rmaNumber: string | null
+  customerId: string | null
+  customerName: string | null
+  /** Lower-case state names, e.g. "in_transit" → "received". from is null for creation. */
+  from: string | null
+  to: string | null
+  details: string
+}
+
+/** GET /audit?rma=&actor=&action=&days=&customer= → AuditLogEntry[] newest first. */
+export type AuditQuery = {
+  /** Case-insensitive "contains" match on the RMA number. */
+  rma?: string
+  actor?: AuditActor
+  action?: AuditAction
+  /** Only rows from the last N days; omit for all time. */
+  days?: number
+  customer?: string
+}

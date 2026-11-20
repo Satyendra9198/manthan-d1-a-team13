@@ -142,3 +142,40 @@ Rules the server must enforce:
   - Retrying a refund that already succeeded returns the existing result and doesn't charge again.
 
 To test failures (for example the SRE "break the gateway" exercise), call `setMockGatewayMode('timeout')` from `mocks/gateway.mock.ts`.
+
+## Manager dashboard
+
+`GET /dashboard?days=7|14|30` returns a `DashboardResponse`. The mock calculates it with the pure functions in `src/domain/returns/analytics.ts`, run over the seed data from `mocks/seed/synthetic.ts`. That seed is deterministic: 2,000 orders, 40 products in 6 categories, 500 customers. The backend can use the same functions.
+
+- **Return rate:** orders in the period that have a return, divided by all orders in the period.
+- **By category:** innerwear and perishables are `null` ("n/a"), not 0%, because they can't be returned.
+- **Avg cycle time:** the mean time from request to refunded or rejected, for returns closed in the period.
+- **Refund success rate:** successful gateway attempts divided by all attempts.
+- **Flagged customers:** always uses the fixed rule of more than 3 returns in the last 30 days, whatever period is selected.
+
+## Customer flag review
+
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/customers/:customerId/returns-profile` | – | `CustomerProfile` |
+| POST | `/customers/:customerId/flag-review` | `FlagReviewRequest` `{ action: "keep" \| "clear", note }` | `CustomerProfile` |
+
+- **Note required.** An empty note → 422 `NOTES_REQUIRED`.
+- **Flagged customers only.** Reviewing a customer who isn't flagged → 409 `NOT_FLAGGED`.
+- **Audit rows.** `keep` writes a `FLAG_REVIEWED` audit row. `clear` writes a `FLAG_CHANGED` row (flagged → cleared).
+- **When a cleared flag comes back.** It stays off until a *new* return arrives that takes the 30-day count over 3 (`isFlagActive` in `src/domain/returns/flagging.ts`).
+- **While flagged,** every refund for the customer goes to finance, whatever the amount (`requiresFinanceApproval`).
+
+## Audit log
+
+`GET /audit?rma=&actor=&action=&days=&customer=` returns `AuditLogEntry[]`, newest first. It's read-only: the API has no way to edit or delete a row.
+
+- **Write rows inside the state change's own database transaction.** Every row written by one API call shares a `requestId`. A replayed retry (same idempotency key) writes nothing.
+- **Actions:**
+  - `STATUS_CHANGED`: a change of the return's status.
+  - `GRADED`: received → inspected, written by the agent.
+  - `REFUND_ROUTED`: sent to `refund_pending` or `finance_review`.
+  - `REFUND_APPROVED` / `REFUND_DECLINED`: the finance decision.
+  - `REFUND_ATTEMPTED`: one row per gateway attempt, with the key, the result and the latency.
+  - `FLAG_CHANGED` / `FLAG_REVIEWED`: manager flag reviews.
+- **Pseudo-states.** `refund_pending`, `finance_review`, `refund_failed` and `cancelled` are refund states, not return statuses. The return's own status only changes on `STATUS_CHANGED` and `GRADED` rows.

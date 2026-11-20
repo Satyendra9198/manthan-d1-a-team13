@@ -21,12 +21,15 @@ import {
   FINANCE_DECLINE_REASON,
   validatePartialRefund,
   todayIso,
+  CATEGORY_LABELS,
   type ReturnStatus,
 } from '@/domain/returns'
+import { formatPaise } from '@/lib/format'
 import { ApiError } from '../client'
 import {
   charge,
   GATEWAY_MAX_ATTEMPTS,
+  GATEWAY_TIMEOUT_MS,
   GatewayTimeoutError,
   resetMockGateway,
 } from './gateway.mock'
@@ -40,6 +43,10 @@ import type {
   RejectReason,
   DeclineRefundRequest,
   FinanceDecisionResponse,
+  AuditAction,
+  AuditActor,
+  AuditLogEntry,
+  AuditQuery,
   FinanceQueueItem,
   LedgerEntry,
   LedgerResponse,
@@ -349,20 +356,41 @@ function seed(): Record<string, MockReturn> {
   return { ...baseSeeds(), ...queueSeeds() }
 }
 
-export type AuditEntry = {
-  id: string
-  at: string
-  actor: 'warehouse_agent' | 'finance_reviewer' | 'system'
-  returnId: string
-  from: ReturnStatus
-  to: ReturnStatus
+export type AuditEntry = AuditLogEntry & {
+  returnId: string | null
+  /** Free-text note the actor wrote, if any. */
   note?: string
 }
+
+/** Names of the signed-in people in mock mode. */
+const ACTOR_NAMES: Partial<Record<AuditActor, string>> = { warehouse_agent: 'Vikram', finance_reviewer: 'Asha' }
 
 type MockRefund = Omit<RefundRecord, 'rmaNumber' | 'itemName'>
 
 let returns = seed()
 let auditLog: AuditEntry[] = []
+let requestSeq = 0
+let currentRequestId = 'req 0000'
+/** Every mutating endpoint starts a request; all rows it writes share the ID. */
+function beginRequest() {
+  currentRequestId = `req ${((++requestSeq * 2_654_435_761) >>> 0).toString(16).slice(-4)}`
+}
+
+function audit(e: Omit<AuditEntry, 'id' | 'at' | 'requestId' | 'actorName'> & { at?: string; requestId?: string }) {
+  auditLog.push({
+    id: `aud_${auditLog.length + 1}`,
+    at: e.at ?? new Date().toISOString(),
+    requestId: e.requestId ?? currentRequestId,
+    actorName: ACTOR_NAMES[e.actor] ?? null,
+    ...e,
+  })
+}
+
+/** Used by other mocks (e.g. flag reviews) to write to the same audit log. */
+export function recordAudit(e: Omit<AuditEntry, 'id' | 'at' | 'requestId' | 'actorName' | 'returnId'>) {
+  beginRequest()
+  audit({ ...e, returnId: null })
+}
 let { refunds, journal }: { refunds: MockRefund[]; journal: LedgerEntry[] } = seedLedger(returns)
 let journalSeq = 5102
 /** Refunds already paid at reset, so tests can count only new payments. */
@@ -379,6 +407,8 @@ export function resetInspectionMock() {
   refundKeySeq = 88_300
   returns = seed()
   auditLog = []
+  requestSeq = 0
+  initAudit()
   ;({ refunds, journal } = seedLedger(returns))
   seededRefundIds = paidIds(refunds)
   journalSeq = 5102
@@ -388,7 +418,9 @@ export function resetInspectionMock() {
   seq = 0
 }
 
-export const getMockAuditLog = () => [...auditLog]
+let seededAuditCount = 0
+/** Audit rows written since the last reset (excludes seeded history). */
+export const getMockAuditLog = () => auditLog.slice(seededAuditCount)
 /** Refunds paid since the last reset: one per return, never more. */
 export const getNewPayments = () =>
   refunds
@@ -397,15 +429,24 @@ export const getNewPayments = () =>
 export const getMockJournal = () => [...journal]
 export const getMockRefunds = () => structuredClone(refunds)
 
-function transition(ret: MockReturn, to: ReturnStatus, actor: AuditEntry['actor'], note?: string) {
+function transition(
+  ret: MockReturn,
+  to: ReturnStatus,
+  actor: AuditActor,
+  note?: string,
+  opts: { action?: AuditAction; details?: string } = {},
+) {
   assertTransition(ret.status, to)
-  auditLog.push({
-    id: `aud_${++seq}`,
-    at: new Date().toISOString(),
+  audit({
+    action: opts.action ?? 'STATUS_CHANGED',
     actor,
     returnId: ret.id,
+    rmaNumber: ret.rmaNumber,
+    customerId: ret.customer.id,
+    customerName: ret.customer.name,
     from: ret.status,
     to,
+    details: opts.details ?? note ?? '',
     note,
   })
   ret.previousStatus = ret.status
@@ -441,8 +482,11 @@ export const inspectionMock = {
     const blocked = scanBlockReason(ret.status)
     if (blocked) throw new ApiError(409, blocked, 'RETURN_NOT_INSPECTABLE')
 
+    beginRequest()
     if (ret.status === 'approved') transition(ret, 'in_transit', 'system', 'Carrier scan missing; set at warehouse')
-    if (ret.status === 'in_transit') transition(ret, 'received', 'warehouse_agent')
+    if (ret.status === 'in_transit') {
+      transition(ret, 'received', 'warehouse_agent', undefined, { details: 'QR scanned at dock 2' })
+    }
     return toDetails(ret)
   },
 
@@ -512,7 +556,19 @@ export const inspectionMock = {
       }
     }
 
-    transition(ret, 'inspected', 'warehouse_agent', auditNote)
+    beginRequest()
+    const gradedDetails =
+      body.decision === 'reject'
+        ? [`reject · ${REJECT_REASON_LABELS[body.reason]}`, body.notes.trim()]
+        : [
+            `Grade ${body.grade} · ${body.decision === 'partial_accept' ? 'partial accept' : 'accept'} · ${formatPaise(refundAmountPaise)}`,
+            body.decision === 'partial_accept' ? body.reason.trim() : '',
+            body.notes.trim(),
+          ]
+    transition(ret, 'inspected', 'warehouse_agent', auditNote, {
+      action: 'GRADED',
+      details: gradedDetails.filter(Boolean).join(' · '),
+    })
 
     // Server decides routing; the client's requiresFinanceApproval is only a hint.
     const needsApproval =
@@ -535,8 +591,26 @@ export const inspectionMock = {
     }
 
     let outcome: InspectionOutcome
+    if (body.decision !== 'reject') {
+      const limit = formatPaise(MOCK_CONFIG.financeApprovalAbovePaise)
+      const amount = formatPaise(refundAmountPaise)
+      const overLimit = refundAmountPaise > MOCK_CONFIG.financeApprovalAbovePaise
+      audit({
+        action: 'REFUND_ROUTED',
+        actor: 'system',
+        returnId: ret.id,
+        rmaNumber: ret.rmaNumber,
+        customerId: ret.customer.id,
+        customerName: ret.customer.name,
+        from: 'inspected',
+        to: needsApproval ? 'finance_review' : 'refund_pending',
+        details: `${amount} ${overLimit ? '>' : '≤'} ${limit}, customer ${customerFlagged ? 'flagged' : 'not flagged'}`,
+      })
+    }
     if (body.decision === 'reject') {
-      transition(ret, 'rejected', 'warehouse_agent', auditNote)
+      transition(ret, 'rejected', 'warehouse_agent', auditNote, {
+        details: `Reason: ${REJECT_REASON_LABELS[body.reason].toLowerCase()}${body.notes.trim() ? ` · ${body.notes.trim()}` : ''}`,
+      })
       outcome = 'rejected'
     } else if (needsApproval) {
       // Refund exists (with its key) but waits for finance before any payment.
@@ -664,20 +738,40 @@ function postJournal(ret: MockReturn, refund: MockRefund, at: string) {
  * Pay through the gateway: 1 attempt + 3 automatic retries, always with the refund's key.
  * Ledger rows are posted only after the gateway confirms. Store credit is issued internally.
  */
-function payRefund(ret: MockReturn, refund: MockRefund, actor: AuditEntry['actor']) {
+function payRefund(ret: MockReturn, refund: MockRefund, actor: AuditActor) {
   if (refund.status === 'succeeded') return
+  const attemptRow = (to: string, details: string) =>
+    audit({
+      action: 'REFUND_ATTEMPTED',
+      actor: 'system',
+      returnId: ret.id,
+      rmaNumber: ret.rmaNumber,
+      customerId: ret.customer.id,
+      customerName: ret.customer.name,
+      from: 'refund_pending',
+      to,
+      details: `Key ${refund.idempotencyKey} · ${details}`,
+    })
   let reference: string | null = null
   if (refund.method === 'Store credit') {
     refund.attempts += 1
     reference = `SC-${journalSeq + 1}`
+    attemptRow('refunded', 'store credit issued')
   } else {
     for (let i = 0; i < GATEWAY_MAX_ATTEMPTS && !reference; i++) {
       refund.attempts += 1
       try {
-        reference = charge(refund.idempotencyKey, refund.amountPaise).reference
+        const c = charge(refund.idempotencyKey, refund.amountPaise)
+        reference = c.reference
+        attemptRow('refunded', `success · ${c.latencyMs} ms`)
       } catch (e) {
         if (!(e instanceof GatewayTimeoutError)) throw e
         refund.lastError = 'Gateway timed out'
+        const last = i === GATEWAY_MAX_ATTEMPTS - 1
+        attemptRow(
+          last ? 'refund_failed' : 'refund_pending',
+          `timeout after ${GATEWAY_TIMEOUT_MS} ms · attempt ${i + 1} of ${GATEWAY_MAX_ATTEMPTS}`,
+        )
       }
     }
   }
@@ -767,6 +861,7 @@ export const refundsMock = {
       throw new ApiError(409, 'Only failed refunds can be retried.', 'NOT_RETRYABLE')
     }
     const ret = Object.values(returns).find((x) => x.id === refund.returnId)!
+    beginRequest()
     payRefund(ret, refund, 'finance_reviewer')
     const record = toRecord(refund)
     if (record.status === 'succeeded') retryReplays.set(refundId, record)
@@ -846,6 +941,18 @@ export const financeMock = {
 
     const refund = refunds.find((r) => r.returnId === ret.id)!
     d.financeDecidedAt = new Date().toISOString()
+    beginRequest()
+    audit({
+      action: 'REFUND_APPROVED',
+      actor: 'finance_reviewer',
+      returnId: ret.id,
+      rmaNumber: ret.rmaNumber,
+      customerId: ret.customer.id,
+      customerName: ret.customer.name,
+      from: 'finance_review',
+      to: 'refund_pending',
+      details: `${formatPaise(refund.amountPaise)} approved · key ${refund.idempotencyKey}`,
+    })
     payRefund(ret, refund, 'finance_reviewer')
 
     const response: FinanceDecisionResponse = {
@@ -875,7 +982,22 @@ export const financeMock = {
       throw new ApiError(422, 'Add a reason the customer will see.', 'NOTES_REQUIRED')
     }
     const decidedAt = new Date().toISOString()
-    transition(ret, 'rejected', 'finance_reviewer', body.note.trim())
+    beginRequest()
+    audit({
+      action: 'REFUND_DECLINED',
+      actor: 'finance_reviewer',
+      returnId: ret.id,
+      rmaNumber: ret.rmaNumber,
+      customerId: ret.customer.id,
+      customerName: ret.customer.name,
+      from: 'finance_review',
+      to: 'cancelled',
+      details: body.note.trim(),
+      note: body.note.trim(),
+    })
+    transition(ret, 'rejected', 'finance_reviewer', body.note.trim(), {
+      details: `Reason: refund declined after review · ${body.note.trim()}`,
+    })
     ret.decision!.rejectReason = FINANCE_DECLINE_REASON
     ret.decision!.financeDecidedAt = decidedAt
     const pending = refunds.find((r) => r.returnId === ret.id)
@@ -892,5 +1014,116 @@ export const financeMock = {
     }
     financeReplays.set(idempotencyKey, { action: 'decline', response })
     return structuredClone(response)
+  },
+}
+
+// ─── Audit log ──────────────────────────────────────────────────────────────
+
+/** Stable, fake request ID for seeded rows: "req 7c1e". */
+function seedRequestId(...parts: string[]) {
+  let h = 2_166_136_261
+  for (const ch of parts.join('|')) h = Math.imul(h ^ ch.charCodeAt(0), 16_777_619)
+  return `req ${(h >>> 0).toString(16).slice(-4)}`
+}
+
+/** Turn each seeded return's history into the audit rows it would have written. */
+function seedAudit(all: Record<string, MockReturn>) {
+  const rows: Parameters<typeof audit>[0][] = []
+  for (const r of Object.values(all)) {
+    const d = r.decision
+    const base = {
+      returnId: r.id,
+      rmaNumber: r.rmaNumber,
+      customerId: r.customer.id,
+      customerName: r.customer.name,
+    }
+    let prev: string | null = null
+    for (const h of r.history) {
+      // Request + auto-approval happen in one API call, so they share an ID.
+      const req = seedRequestId(r.id, h.status === 'approved' ? 'requested' : h.status)
+      const row = { ...base, at: h.at, requestId: req, from: prev, to: h.status }
+      switch (h.status) {
+        case 'requested':
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'customer', details: `Reason: ${r.reason} · ${r.photos.length} photo${r.photos.length === 1 ? '' : 's'}` })
+          break
+        case 'approved':
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'system', details: `Eligible (${CATEGORY_LABELS[r.item.category]}) · label created` })
+          break
+        case 'in_transit':
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'customer', details: 'Marked as shipped' })
+          break
+        case 'received':
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'warehouse_agent', details: 'QR scanned at dock 2' })
+          break
+        case 'inspected':
+          if (d) {
+            rows.push({
+              ...row,
+              action: 'GRADED',
+              actor: 'warehouse_agent',
+              details:
+                d.decision === 'reject'
+                  ? `reject · ${REJECT_REASON_LABELS[d.rejectReason!]}`
+                  : `Grade ${d.grade} · accept · ${formatPaise(d.refundAmountPaise)}`,
+            })
+            if (d.decision !== 'reject') {
+              rows.push({
+                ...row,
+                action: 'REFUND_ROUTED',
+                actor: 'system',
+                from: 'inspected',
+                to: d.requiresFinanceApproval ? 'finance_review' : 'refund_pending',
+                details: `${formatPaise(d.refundAmountPaise)} ${d.refundAmountPaise > FINANCE_APPROVAL_ABOVE_PAISE ? '>' : '≤'} ${formatPaise(FINANCE_APPROVAL_ABOVE_PAISE)}, customer ${toDetails(r).customer.flaggedForReview ? 'flagged' : 'not flagged'}`,
+              })
+            }
+          }
+          break
+        case 'refunded':
+          rows.push({ ...row, action: 'REFUND_ATTEMPTED', actor: 'system', from: 'refund_pending', to: 'refunded', details: `Key ${d?.refundKey} · success · 412 ms` })
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'system', from: 'inspected', details: `Refund paid ${d?.refund?.reference}` })
+          break
+        case 'rejected':
+          rows.push({ ...row, action: 'STATUS_CHANGED', actor: 'warehouse_agent', from: 'inspected', details: `Reason: ${d?.rejectReason ? REJECT_REASON_LABELS[d.rejectReason].toLowerCase() : ''}${d?.notes ? ` · ${d.notes}` : ''}` })
+          break
+      }
+      prev = h.status
+    }
+    // Finance-approved refund whose gateway attempts all timed out.
+    if (d?.financeDecidedAt && r.status === 'inspected') {
+      const req = seedRequestId(r.id, 'finance')
+      rows.push({ ...base, at: d.financeDecidedAt, requestId: req, action: 'REFUND_APPROVED', actor: 'finance_reviewer', from: 'finance_review', to: 'refund_pending', details: `${formatPaise(d.refundAmountPaise)} approved · key ${d.refundKey}` })
+      for (let i = 1; i <= GATEWAY_MAX_ATTEMPTS; i++) {
+        rows.push({ ...base, at: d.financeDecidedAt, requestId: req, action: 'REFUND_ATTEMPTED', actor: 'system', from: 'refund_pending', to: i === GATEWAY_MAX_ATTEMPTS ? 'refund_failed' : 'refund_pending', details: `Key ${d.refundKey} · timeout after ${GATEWAY_TIMEOUT_MS} ms · attempt ${i} of ${GATEWAY_MAX_ATTEMPTS}` })
+      }
+    }
+  }
+  rows.sort((a, b) => a.at!.localeCompare(b.at!))
+  for (const row of rows) audit(row)
+}
+
+function initAudit() {
+  seedAudit(returns)
+  seededAuditCount = auditLog.length
+}
+initAudit()
+
+const toPublic = ({ returnId: _r, note: _n, ...e }: AuditEntry): AuditLogEntry => e
+
+export const auditMock = {
+  async getEntries(q: AuditQuery = {}): Promise<AuditLogEntry[]> {
+    await wait()
+    const from = q.days ? Date.now() - q.days * 86_400_000 : -Infinity
+    const rma = q.rma?.trim().toLowerCase()
+    return auditLog
+      .filter(
+        (e) =>
+          new Date(e.at).getTime() >= from &&
+          (!rma || e.rmaNumber?.toLowerCase().includes(rma)) &&
+          (!q.actor || e.actor === q.actor) &&
+          (!q.action || e.action === q.action) &&
+          (!q.customer || e.customerId === q.customer),
+      )
+      .map(toPublic)
+      .reverse()
   },
 }

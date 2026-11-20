@@ -4,6 +4,9 @@
  * moves money again. Can be "broken" (mode = 'timeout') to test failures and alerts.
  */
 
+/** A timed-out attempt is reported after this long. */
+export const GATEWAY_TIMEOUT_MS = 5000
+
 /** 1 attempt + 3 automatic retries. */
 export const GATEWAY_MAX_ATTEMPTS = 4
 
@@ -16,7 +19,7 @@ export class GatewayTimeoutError extends Error {
   }
 }
 
-type Charge = { key: string; amountPaise: number; reference: string; at: string }
+type Charge = { key: string; amountPaise: number; reference: string; at: string; latencyMs: number }
 
 let mode: GatewayMode = 'ok'
 let charges = new Map<string, Charge>()
@@ -48,6 +51,8 @@ export function charge(key: string, amountPaise: number): Charge {
     amountPaise,
     reference: `GW-${++refSeq}-2026`,
     at: new Date().toISOString(),
+    // Simulated, deterministic latency (feeds the audit log and gateway metrics).
+    latencyMs: 280 + ((refSeq * 53) % 260),
   }
   charges.set(key, c)
   return c
