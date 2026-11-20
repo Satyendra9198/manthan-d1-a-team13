@@ -7,19 +7,26 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.returnright.exception.InvalidPhotosException;
+import com.returnright.exception.ReturnNotFoundException;
 import com.returnright.model.domain.PhotoUpload;
 import com.returnright.model.dto.request.SubmitReturnRequest;
+import com.returnright.model.dto.request.TrackReturnRequest;
 import com.returnright.model.dto.response.ReturnCreatedResponse;
 import com.returnright.model.dto.response.ReturnLineResponse;
+import com.returnright.model.dto.response.ReturnTrackingResponse;
+import com.returnright.model.dto.response.TimelineEntryResponse;
 import com.returnright.model.enums.CustomerTimelineStep;
 import com.returnright.model.enums.RefundMethod;
 import com.returnright.model.enums.ReturnReason;
+import com.returnright.model.enums.TimelineEntryState;
 import com.returnright.service.ReturnSubmissionService;
+import com.returnright.service.ReturnTrackingService;
 import com.returnright.support.TestImages;
 import com.returnright.support.WithApiSecurity;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +60,8 @@ class CustomerReturnControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ReturnSubmissionService returnSubmissionService;
+
+  @MockitoBean private ReturnTrackingService returnTrackingService;
 
   @Test
   void validSubmissionReturns201WithTheRmaAndItsLocation() throws Exception {
@@ -193,6 +202,74 @@ class CustomerReturnControllerTest {
         .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.code").value("INVALID_PHOTOS"))
         .andExpect(jsonPath("$.details.length()").value(1));
+  }
+
+  @Test
+  void trackingAReturnShowsItsTimelineAndStatus() throws Exception {
+    when(returnTrackingService.track(any(TrackReturnRequest.class)))
+        .thenReturn(
+            new ReturnTrackingResponse(
+                "RMA-2026-00731",
+                "RR-10482",
+                CustomerTimelineStep.IN_TRANSIT,
+                "Your parcel is on its way to our warehouse.",
+                RefundMethod.ORIGINAL_PAYMENT,
+                Instant.parse("2026-11-17T04:30:00Z"),
+                189_900,
+                List.of(
+                    new TimelineEntryResponse(
+                        CustomerTimelineStep.REQUESTED,
+                        TimelineEntryState.COMPLETED,
+                        Instant.parse("2026-11-17T04:30:00Z"))),
+                List.of(),
+                null,
+                null,
+                null));
+
+    mockMvc
+        .perform(
+            post(RETURNS_URL + "/track")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"rmaNumber": "RMA-2026-00731", "email": "aditi.sharma@example.com"}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("IN_TRANSIT"))
+        .andExpect(jsonPath("$.timeline[0].state").value("COMPLETED"));
+  }
+
+  @Test
+  void trackingWithAWrongEmailIsReportedAsReturnNotFound() throws Exception {
+    when(returnTrackingService.track(any(TrackReturnRequest.class)))
+        .thenThrow(ReturnNotFoundException.forCustomer());
+
+    mockMvc
+        .perform(
+            post(RETURNS_URL + "/track")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"rmaNumber": "RMA-2026-00731", "email": "someone@example.com"}
+                    """))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("RETURN_NOT_FOUND"));
+  }
+
+  @Test
+  void trackingWithoutAnRmaIsRejectedAsValidationFailed() throws Exception {
+    mockMvc
+        .perform(
+            post(RETURNS_URL + "/track")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"rmaNumber": "", "email": "aditi.sharma@example.com"}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+    verifyNoInteractions(returnTrackingService);
   }
 
   private static MockMultipartFile returnPart(String json) {
