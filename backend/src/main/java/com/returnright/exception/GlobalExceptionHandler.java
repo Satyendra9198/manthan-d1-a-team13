@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -31,6 +32,27 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ReturnNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleReturnNotFound(ReturnNotFoundException ex) {
     return error(HttpStatus.NOT_FOUND, "RETURN_NOT_FOUND", ex.getMessage(), List.of());
+  }
+
+  @ExceptionHandler(PhotoNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handlePhotoNotFound(PhotoNotFoundException ex) {
+    return error(HttpStatus.NOT_FOUND, "PHOTO_NOT_FOUND", ex.getMessage(), List.of());
+  }
+
+  @ExceptionHandler(InvalidInspectionException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidInspection(InvalidInspectionException ex) {
+    return error(
+        HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_INSPECTION", ex.getMessage(), ex.getProblems());
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  public ResponseEntity<ErrorResponse> handleConcurrentUpdate(
+      ObjectOptimisticLockingFailureException ex) {
+    return error(
+        HttpStatus.CONFLICT,
+        "CONCURRENT_UPDATE",
+        "Someone else changed this return at the same time. Reload it and try again.",
+        List.of());
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)
