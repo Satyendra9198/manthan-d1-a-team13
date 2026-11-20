@@ -17,22 +17,25 @@ JDK 21 (Temurin), Node 26.13.1, Python 3.13. No Maven install is needed: each Ja
 
 ```powershell
 git clone <repo-url>; cd manthan-d1-a-team13
+infra/scripts/init-env.ps1                   # creates the git-ignored .env with random secrets (or: cp .env.example .env)
 docker compose up -d --build --wait          # first build takes a few minutes
 docker compose run --rm app --spring.profiles.active=seed --seed.as-of=2026-11-20 --seed.reset=true
 ```
 
-Use **today's date** for `--seed.as-of`. Then open:
+Use **today's date** for `--seed.as-of`. **Secrets** live only in `.env` (git-ignored); `.env.example` lists every
+variable. Changing a DB password after the first start needs `docker compose down -v` (roles are created once).
+Then open:
 
 | What | URL | Login |
 |---|---|---|
 | App (customer + staff) | http://localhost:8080 | see below |
 | API + Swagger UI | http://localhost:8000/swagger-ui.html | – |
-| Grafana dashboard | http://localhost:3000 | `admin` / `ReturnRight#2026` |
+| Grafana dashboard | http://localhost:3000 | `admin` / `GRAFANA_PASSWORD` in `.env` |
 | Prometheus | http://localhost:9090 | – |
-| pgAdmin (browse the data) | http://localhost:5050 | `admin@returnright.dev` / `ReturnRight#2026` |
-| Mock gateway | http://localhost:8100/healthz | admin token `dev-admin-token` |
+| pgAdmin (browse the data) | http://localhost:5050 | `admin@returnright.dev` / `PGADMIN_PASSWORD` in `.env` |
+| Mock gateway | http://localhost:8100/healthz | admin token `GATEWAY_ADMIN_TOKEN` in `.env` |
 
-**Logins:** staff `warehouse1`, `finance1`, `finance2`, `manager1` (password `ReturnRight#2026`). Customers log in
+**Logins:** staff `warehouse1`, `finance1`, `finance2`, `manager1` (password = `RR_SEED_STAFF_PASSWORD` in `.env`). Customers log in
 with an order number and its email, e.g. `RR-EDGE-001` + `edge.customer@example.com`. All golden cases (day 30/31,
 electronics 10/11, innerwear, the finance threshold, flagged customers, gateway declines) are listed in
 [`docs/demo-data.md`](docs/demo-data.md).

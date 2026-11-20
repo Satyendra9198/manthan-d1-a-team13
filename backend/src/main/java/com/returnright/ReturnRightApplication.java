@@ -1,6 +1,6 @@
 package com.returnright;
 
-import com.returnright.core.RrProperties;
+import com.returnright.core.config.RrProperties;
 import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

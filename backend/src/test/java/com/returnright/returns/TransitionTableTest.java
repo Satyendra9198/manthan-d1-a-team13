@@ -1,16 +1,19 @@
 package com.returnright.returns;
 
+import com.returnright.labels.service.LabelService;
+import com.returnright.returns.repository.ReturnRepository;
+import com.returnright.returns.service.ReturnStateMachine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import com.returnright.audit.AuditService;
-import com.returnright.core.Metrics;
-import com.returnright.core.OutboxService;
-import com.returnright.core.RrProperties;
+import com.returnright.audit.service.AuditService;
+import com.returnright.core.infra.Metrics;
+import com.returnright.core.infra.OutboxService;
+import com.returnright.core.config.RrProperties;
 import com.returnright.core.enums.ReturnEvent;
 import com.returnright.core.enums.ReturnStatus;
-import com.returnright.labels.LabelService;
-import com.returnright.notifications.NotificationService;
+import com.returnright.labels.repository.ReturnLabelRepository;
+import com.returnright.notifications.service.NotificationService;
 import jakarta.persistence.EntityManager;
 import java.io.IOException;
 import java.io.InputStream;

@@ -242,7 +242,7 @@ Customers get a redacted view: no `attempts`, no `requires_finance_review`, no f
 | `role` | `CUSTOMER` | `WAREHOUSE_AGENT` / `FINANCE_REVIEWER` / `OPS_MANAGER` |
 | `exp` | 60 min | 8 h |
 
-**Seeded staff users** (created by the seed script; password from `RR_SEED_STAFF_PASSWORD`, dev default `ReturnRight#2026`, hashed with argon2id):
+**Seeded staff users** (created by the seed script; password = `RR_SEED_STAFF_PASSWORD` from the git-ignored `.env`, never committed; hashed with argon2id):
 
 | username | role | why |
 |---|---|---|

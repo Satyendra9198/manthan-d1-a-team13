@@ -208,7 +208,7 @@ export function DemoAccounts() {
             ))}
           </ul>
           <p className="mt-2 text-fg-muted">
-            Password <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-fg">ReturnRight#2026</code>
+            Password: the demo host's <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-fg">RR_SEED_STAFF_PASSWORD</code> (not shipped in the app)
           </p>
         </div>
         <div>

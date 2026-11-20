@@ -18,20 +18,38 @@ from __future__ import annotations
 
 import collections
 import json
+import os
+import pathlib
 import random
 import urllib.request
 import uuid
 
 from locust import HttpUser, between, events, task
 
-PASSWORD = "ReturnRight#2026"
 API = "/api/v1"
+
+
+def _secret(name: str) -> str:
+    """Secret from the environment, else from .env at the repo root (never hard-coded; see .env.example)."""
+    value = os.environ.get(name)
+    if value:
+        return value
+    for env_file in (pathlib.Path(__file__).resolve().parents[2] if len(pathlib.Path(__file__).resolve().parents) > 2 else pathlib.Path.cwd() / ".env", pathlib.Path.cwd() / ".env"):
+        if env_file.is_file():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith(name + "="):
+                    return line.split("=", 1)[1].strip()
+    raise SystemExit(f"{name} is not set (export it or create .env from .env.example)")
+
+
+PASSWORD = _secret("RR_SEED_STAFF_PASSWORD")
 
 
 @events.init_command_line_parser.add_listener
 def _args(parser):
     parser.add_argument("--gateway-url", default="http://localhost:8100", help="mock gateway base URL")
-    parser.add_argument("--gateway-admin-token", default="dev-admin-token")
+    parser.add_argument("--gateway-admin-token", default=os.environ.get("GATEWAY_ADMIN_TOKEN", ""),
+                        help="defaults to $GATEWAY_ADMIN_TOKEN or .env")
 
 
 class FinanceReviewer(HttpUser):

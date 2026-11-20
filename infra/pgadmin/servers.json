@@ -8,7 +8,7 @@
       "MaintenanceDB": "returnright",
       "Username": "rr_readonly",
       "SSLMode": "disable",
-      "Comment": "Password: rr_readonly_dev_pw (dev only). SELECT on all tables."
+      "Comment": "Password = RR_READONLY_DB_PASSWORD in .env. SELECT on all tables."
     },
     "2": {
       "Name": "ReturnRight - owner (rr_owner)",
@@ -18,7 +18,7 @@
       "MaintenanceDB": "returnright",
       "Username": "rr_owner",
       "SSLMode": "disable",
-      "Comment": "Password: rr_owner_dev_pw (dev only). Schema owner - ledger/audit are still append-only via triggers."
+      "Comment": "Password = RR_OWNER_DB_PASSWORD in .env. Schema owner; ledger/audit stay append-only via triggers."
     }
   }
 }

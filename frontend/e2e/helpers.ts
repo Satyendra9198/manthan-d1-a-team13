@@ -1,7 +1,23 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-export const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD ?? "ReturnRight#2026";
+/** Secret from the environment, else from .env at the repo root (never hard-coded; see .env.example). */
+function secret(name: string): string {
+  const fromEnv = process.env[name];
+  if (fromEnv) return fromEnv;
+  for (const file of [resolve(process.cwd(), "../.env"), resolve(process.cwd(), ".env")]) {
+    if (!existsSync(file)) continue;
+    const line = readFileSync(file, "utf8").split(/
+?
+/).find((l) => l.startsWith(`${name}=`));
+    if (line) return line.slice(name.length + 1).trim();
+  }
+  throw new Error(`${name} is not set (export it or create .env from .env.example)`);
+}
+
+export const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD ?? secret("RR_SEED_STAFF_PASSWORD");
 export const EDGE_EMAIL = "edge.customer@example.com";
 export const EDGE_ORDER = "RR-EDGE-001";
 

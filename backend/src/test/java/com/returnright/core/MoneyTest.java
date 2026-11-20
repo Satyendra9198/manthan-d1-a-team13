@@ -1,5 +1,6 @@
 package com.returnright.core;
 
+import com.returnright.core.util.Money;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

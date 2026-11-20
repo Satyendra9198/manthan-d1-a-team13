@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.returnright.support.TestSecrets;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -54,13 +55,15 @@ import tools.jackson.databind.json.JsonMapper;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RefundIdempotencyIntegrationTest {
 
-    private static final String PASSWORD = "ReturnRight#2026";
+    private static final String PASSWORD = TestSecrets.STAFF_PASSWORD;
     private static final String EDGE_EMAIL = "edge.customer@example.com";
 
     static final PostgreSQLContainer PG = new PostgreSQLContainer("postgres:18")
-            .withDatabaseName("returnright").withUsername("rr_owner").withPassword("rr_owner_dev_pw")
-            .withCopyFileToContainer(MountableFile.forHostPath("../infra/postgres/init/01-roles.sql"),
-                    "/docker-entrypoint-initdb.d/01-roles.sql");
+            .withDatabaseName("returnright").withUsername("rr_owner").withPassword(TestSecrets.OWNER_DB_PASSWORD)
+            .withEnv("RR_APP_DB_PASSWORD", TestSecrets.APP_DB_PASSWORD)
+            .withEnv("RR_READONLY_DB_PASSWORD", TestSecrets.READONLY_DB_PASSWORD)
+            .withCopyFileToContainer(MountableFile.forHostPath("../infra/postgres/init/01-roles.sh"),
+                    "/docker-entrypoint-initdb.d/01-roles.sh");
 
     @SuppressWarnings("resource")
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:8-alpine").withExposedPorts(6379);
@@ -76,10 +79,15 @@ class RefundIdempotencyIntegrationTest {
     static void props(DynamicPropertyRegistry r) {
         r.add("spring.datasource.url", PG::getJdbcUrl);
         r.add("spring.datasource.username", () -> "rr_app");       // what the app runs as in compose
-        r.add("spring.datasource.password", () -> "rr_app_dev_pw");
+        r.add("spring.datasource.password", () -> TestSecrets.APP_DB_PASSWORD);
         r.add("spring.flyway.user", () -> "rr_owner");
-        r.add("spring.flyway.password", () -> "rr_owner_dev_pw");
-        r.add("spring.data.redis.url", () -> "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379));
+        r.add("spring.flyway.password", () -> TestSecrets.OWNER_DB_PASSWORD);
+        r.add("spring.data.redis.host", REDIS::getHost);
+        r.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        r.add("spring.data.redis.password", () -> "");
+        r.add("rr.jwt.secret", () -> TestSecrets.JWT_SECRET);
+        r.add("seed.staff-password", () -> TestSecrets.STAFF_PASSWORD);
+        r.add("seed.gateway-admin-token", () -> TestSecrets.GATEWAY_ADMIN_TOKEN);
         r.add("rr.gateway.url", GATEWAY::url);
     }
 
@@ -190,7 +198,7 @@ class RefundIdempotencyIntegrationTest {
     @Test
     @Order(5)
     void appRoleCannotRewriteTheLedgerOrAuditLog() throws SQLException {   // ledger rules, V3 grants
-        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "rr_app", "rr_app_dev_pw")) {
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "rr_app", TestSecrets.APP_DB_PASSWORD)) {
             for (String sql : List.of("UPDATE ledger_entries SET amount_paise = amount_paise",
                     "DELETE FROM ledger_transactions", "UPDATE audit_log SET event = event")) {
                 assertThatThrownBy(() -> c.createStatement().executeUpdate(sql))
@@ -208,7 +216,7 @@ class RefundIdempotencyIntegrationTest {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    com.returnright.core.KvStore kv;
+    com.returnright.core.infra.KvStore kv;
 
     @Test
     @Order(7)

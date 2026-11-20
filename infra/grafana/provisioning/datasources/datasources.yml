@@ -17,4 +17,4 @@ datasources:
       sslmode: disable
       postgresVersion: 1800
     secureJsonData:
-      password: rr_readonly_dev_pw
+      password: $RR_READONLY_DB_PASSWORD   # injected from the container env (.env)

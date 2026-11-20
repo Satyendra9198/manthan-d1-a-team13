@@ -1,10 +1,12 @@
 package com.returnright.seed;
 
-import com.returnright.audit.AuditService;
-import com.returnright.auth.User;
-import com.returnright.core.Actor;
-import com.returnright.core.AppClock;
-import com.returnright.core.RrProperties;
+import com.returnright.auth.entity.User;
+import com.returnright.labels.service.LabelService;
+import com.returnright.audit.service.AuditService;
+import com.returnright.auth.repository.UserRepository;
+import com.returnright.core.model.Actor;
+import com.returnright.core.config.AppClock;
+import com.returnright.core.config.RrProperties;
 import com.returnright.core.enums.CancelReason;
 import com.returnright.core.enums.Decision;
 import com.returnright.core.enums.Grade;
@@ -15,25 +17,25 @@ import com.returnright.core.enums.RejectReason;
 import com.returnright.core.enums.ReturnReason;
 import com.returnright.core.enums.ReturnStatus;
 import com.returnright.core.enums.Role;
-import com.returnright.finance.FinanceService;
-import com.returnright.inspection.InspectionService;
-import com.returnright.labels.LabelService;
-import com.returnright.ledger.LedgerService;
-import com.returnright.orders.Category;
-import com.returnright.orders.Customer;
-import com.returnright.orders.Order;
-import com.returnright.orders.OrderItem;
-import com.returnright.orders.Product;
-import com.returnright.orders.Repositories.CategoryRepository;
-import com.returnright.orders.Repositories.CustomerRepository;
-import com.returnright.orders.Repositories.OrderItemRepository;
-import com.returnright.orders.Repositories.OrderRepository;
-import com.returnright.orders.Repositories.ProductRepository;
-import com.returnright.returns.ReturnItem;
-import com.returnright.returns.ReturnRequest;
-import com.returnright.returns.ReturnService;
-import com.returnright.returns.ReturnService.SubmitUnit;
-import com.returnright.returns.ReturnService.UnitView;
+import com.returnright.finance.service.FinanceService;
+import com.returnright.inspection.service.InspectionService;
+import com.returnright.labels.repository.ReturnLabelRepository;
+import com.returnright.ledger.service.LedgerService;
+import com.returnright.orders.entity.Category;
+import com.returnright.orders.entity.Customer;
+import com.returnright.orders.entity.Order;
+import com.returnright.orders.entity.OrderItem;
+import com.returnright.orders.entity.Product;
+import com.returnright.orders.repository.CategoryRepository;
+import com.returnright.orders.repository.CustomerRepository;
+import com.returnright.orders.repository.OrderItemRepository;
+import com.returnright.orders.repository.OrderRepository;
+import com.returnright.orders.repository.ProductRepository;
+import com.returnright.returns.entity.ReturnItem;
+import com.returnright.returns.entity.ReturnRequest;
+import com.returnright.returns.service.ReturnService;
+import com.returnright.returns.service.ReturnService.SubmitUnit;
+import com.returnright.returns.service.ReturnService.UnitView;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -79,7 +81,7 @@ public class Seeder implements ApplicationRunner {
     private final CustomerRepository customers;
     private final OrderRepository orders;
     private final OrderItemRepository orderItems;
-    private final User.UserRepository users;
+    private final UserRepository users;
     private final ReturnService returnService;
     private final InspectionService inspection;
     private final FinanceService finance;
@@ -91,7 +93,7 @@ public class Seeder implements ApplicationRunner {
     private final TransactionTemplate tx;
     private final AppClock clock;
     private final RrProperties props;
-    private final com.returnright.core.KvStore kv;
+    private final com.returnright.core.infra.KvStore kv;
 
     @Value("${seed.random-seed}") long seed;
     @Value("${seed.as-of:}") String asOfArg;
@@ -100,7 +102,7 @@ public class Seeder implements ApplicationRunner {
     @Value("${seed.orders:2000}") int orderCount;
     @Value("${seed.return-rate:0.12}") double returnRate;
     @Value("${seed.staff-password}") String staffPassword;
-    @Value("${GATEWAY_ADMIN_TOKEN:dev-admin-token}") String gatewayAdminToken;
+    @Value("${seed.gateway-admin-token:}") String gatewayAdminToken;
 
     private Random rnd;
     private Instant anchor;
@@ -110,11 +112,11 @@ public class Seeder implements ApplicationRunner {
     private final Map<String, Integer> stats = new LinkedHashMap<>();
 
     public Seeder(CategoryRepository categories, ProductRepository products, CustomerRepository customers,
-                  OrderRepository orders, OrderItemRepository orderItems, User.UserRepository users,
+                  OrderRepository orders, OrderItemRepository orderItems, UserRepository users,
                   ReturnService returnService, InspectionService inspection, FinanceService finance,
                   LabelService labels, LedgerService ledger, AuditService audit, PasswordEncoder encoder,
                   JdbcTemplate jdbc, TransactionTemplate tx, AppClock clock, RrProperties props,
-                  com.returnright.core.KvStore kv) {
+                  com.returnright.core.infra.KvStore kv) {
         this.categories = categories;
         this.products = products;
         this.customers = customers;

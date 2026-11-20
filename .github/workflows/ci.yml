@@ -61,6 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env from the dev placeholders (secrets are never committed)
+        run: cp .env.example .env
       - name: Start the stack
         run: docker compose up -d --build --wait
       - name: Seed golden data

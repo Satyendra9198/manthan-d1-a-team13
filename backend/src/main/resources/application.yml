@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Secrets live only in the repo-root .env (git-ignored; template: .env.example). In Docker they arrive as env vars.
+    import: "optional:file:.env[.properties],optional:file:../.env[.properties]"
   application:
     name: returnright-api
   threads:
@@ -7,13 +10,13 @@ spring:
   datasource:
     url: ${RR_DB_URL:jdbc:postgresql://localhost:5434/returnright}
     username: ${RR_DB_USER:rr_app}
-    password: ${RR_DB_PASSWORD:rr_app_dev_pw}
+    password: ${RR_DB_PASSWORD:${RR_APP_DB_PASSWORD}}
     hikari:
       maximum-pool-size: 20
   flyway:
     # migrations run as the schema owner; the app itself runs as least-privilege rr_app
     user: ${RR_DB_OWNER_USER:rr_owner}
-    password: ${RR_DB_OWNER_PASSWORD:rr_owner_dev_pw}
+    password: ${RR_DB_OWNER_PASSWORD:${RR_OWNER_DB_PASSWORD}}
     locations: classpath:db/migration
   jpa:
     open-in-view: false
@@ -25,7 +28,9 @@ spring:
           time_zone: UTC
   data:
     redis:
-      url: ${RR_REDIS_URL:redis://localhost:6379}
+      host: ${RR_REDIS_HOST:localhost}
+      port: ${RR_REDIS_PORT:6379}
+      password: ${RR_REDIS_PASSWORD:}
       timeout: 500ms
   kafka:
     bootstrap-servers: ${RR_KAFKA_BOOTSTRAP:localhost:9092}
@@ -76,7 +81,7 @@ rr:
   flag-window-days: 30
   label-ttl-days: 14                 # [A-19]
   jwt:
-    secret: ${RR_JWT_SECRET:dev-only-change-me-0123456789abcdef0123456789abcdef}
+    secret: ${RR_JWT_SECRET}
     issuer: returnright
     customer-ttl-minutes: 60
     staff-ttl-minutes: 480

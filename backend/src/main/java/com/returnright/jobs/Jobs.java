@@ -1,16 +1,16 @@
 package com.returnright.jobs;
 
-import com.returnright.analytics.AnalyticsService;
-import com.returnright.core.Actor;
-import com.returnright.core.AppClock;
-import com.returnright.core.Correlation;
-import com.returnright.core.IdempotencyService;
-import com.returnright.core.Metrics;
-import com.returnright.core.RrProperties;
+import com.returnright.analytics.service.AnalyticsService;
+import com.returnright.core.model.Actor;
+import com.returnright.core.config.AppClock;
+import com.returnright.core.web.Correlation;
+import com.returnright.core.infra.IdempotencyService;
+import com.returnright.core.infra.Metrics;
+import com.returnright.core.config.RrProperties;
 import com.returnright.core.enums.ReturnEvent;
-import com.returnright.ledger.LedgerService;
-import com.returnright.refunds.RefundService;
-import com.returnright.returns.ReturnStateMachine;
+import com.returnright.ledger.service.LedgerService;
+import com.returnright.refunds.service.RefundService;
+import com.returnright.returns.service.ReturnStateMachine;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;

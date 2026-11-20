@@ -1,16 +1,20 @@
 # ReturnRight local stack (ADR-002). Core: docker compose up -d --build
 # Streaming extras (Kafka, notifier, Mailpit): docker compose --profile streaming up -d
+# Secrets: every secret comes from .env (git-ignored); create it with `cp .env.example .env` or infra/scripts/init-env.ps1
 name: returnright
 
 x-app-env: &app-env
   RR_DB_URL: jdbc:postgresql://db:5432/returnright
   RR_DB_USER: rr_app
-  RR_DB_PASSWORD: ${RR_APP_DB_PASSWORD:-rr_app_dev_pw}
+  RR_DB_PASSWORD: ${RR_APP_DB_PASSWORD:?set RR_APP_DB_PASSWORD in .env (see .env.example)}
   RR_DB_OWNER_USER: rr_owner
-  RR_DB_OWNER_PASSWORD: ${RR_OWNER_DB_PASSWORD:-rr_owner_dev_pw}
-  RR_REDIS_URL: redis://:${RR_REDIS_PASSWORD:-rr_redis_dev_pw}@redis:6379
+  RR_DB_OWNER_PASSWORD: ${RR_OWNER_DB_PASSWORD:?set RR_OWNER_DB_PASSWORD in .env (see .env.example)}
+  RR_REDIS_HOST: redis
+  RR_REDIS_PASSWORD: ${RR_REDIS_PASSWORD:?set RR_REDIS_PASSWORD in .env (see .env.example)}
   RR_GATEWAY_URL: http://gateway:8100
-  RR_JWT_SECRET: ${RR_JWT_SECRET:-dev-only-change-me-0123456789abcdef0123456789abcdef}
+  RR_JWT_SECRET: ${RR_JWT_SECRET:?set RR_JWT_SECRET in .env (see .env.example)}
+  GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:?set GATEWAY_ADMIN_TOKEN in .env (see .env.example)}
+  RR_SEED_STAFF_PASSWORD: ${RR_SEED_STAFF_PASSWORD:?set RR_SEED_STAFF_PASSWORD in .env (see .env.example)}
   RR_CORS_ORIGINS: http://localhost:8080,http://localhost:5173
   RR_KAFKA_BOOTSTRAP: kafka:9092
   RR_KAFKA_ENABLED: ${RR_KAFKA_ENABLED:-false}
@@ -21,7 +25,9 @@ services:
     image: postgres:18
     environment:
       POSTGRES_USER: rr_owner
-      POSTGRES_PASSWORD: ${RR_OWNER_DB_PASSWORD:-rr_owner_dev_pw}
+      POSTGRES_PASSWORD: ${RR_OWNER_DB_PASSWORD:?set RR_OWNER_DB_PASSWORD in .env (see .env.example)}
+      RR_APP_DB_PASSWORD: ${RR_APP_DB_PASSWORD:?set RR_APP_DB_PASSWORD in .env (see .env.example)}
+      RR_READONLY_DB_PASSWORD: ${RR_READONLY_DB_PASSWORD:?set RR_READONLY_DB_PASSWORD in .env (see .env.example)}
       POSTGRES_DB: returnright
     ports: ["${RR_DB_HOST_PORT:-5434}:5432"]  # 5434 on the host: laptops often run a local PostgreSQL on 5432
     volumes:
@@ -35,11 +41,13 @@ services:
 
   redis:
     image: redis:8-alpine
-    command: ["redis-server", "--requirepass", "${RR_REDIS_PASSWORD:-rr_redis_dev_pw}", "--maxmemory", "64mb",
+    environment:
+      REDIS_PASSWORD: ${RR_REDIS_PASSWORD:?set RR_REDIS_PASSWORD in .env (see .env.example)}
+    command: ["redis-server", "--requirepass", "${RR_REDIS_PASSWORD:?set RR_REDIS_PASSWORD in .env (see .env.example)}", "--maxmemory", "64mb",
               "--maxmemory-policy", "allkeys-lru", "--save", ""]
     ports: ["6379:6379"]
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${RR_REDIS_PASSWORD:-rr_redis_dev_pw}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -47,7 +55,7 @@ services:
   gateway:
     build: ./gateway
     environment:
-      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:-dev-admin-token}
+      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:?set GATEWAY_ADMIN_TOKEN in .env (see .env.example)}
       GATEWAY_ENV: dev
       LATENCY_MS_MIN: ${LATENCY_MS_MIN:-50}
       LATENCY_MS_MAX: ${LATENCY_MS_MAX:-200}
@@ -85,7 +93,7 @@ services:
     image: dpage/pgadmin4:9
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@returnright.dev
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-ReturnRight#2026}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?set PGADMIN_PASSWORD in .env (see .env.example)}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports: ["5050:80"]
@@ -104,7 +112,8 @@ services:
   grafana:
     image: grafana/grafana:12.3.0
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-ReturnRight#2026}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?set GRAFANA_PASSWORD in .env (see .env.example)}
+      RR_READONLY_DB_PASSWORD: ${RR_READONLY_DB_PASSWORD:?set RR_READONLY_DB_PASSWORD in .env (see .env.example)}
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/returnright.json

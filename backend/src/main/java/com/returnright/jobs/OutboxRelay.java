@@ -1,6 +1,6 @@
 package com.returnright.jobs;
 
-import com.returnright.core.RrProperties;
+import com.returnright.core.config.RrProperties;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.util.List;

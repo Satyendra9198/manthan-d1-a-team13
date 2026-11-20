@@ -18,10 +18,10 @@ reconciles (R1–R5 = 0, printed at the end of the seed run).
 
 | Who | Username / login | Password |
 |---|---|---|
-| Warehouse agents | `warehouse1`, `warehouse2` | `ReturnRight#2026` |
-| Finance reviewers | `finance1`, `finance2` | `ReturnRight#2026` |
-| Operations manager | `manager1` | `ReturnRight#2026` |
-| Admin (may act for any staff role) | `admin` | `ReturnRight#2026` |
+| Warehouse agents | `warehouse1`, `warehouse2` | `RR_SEED_STAFF_PASSWORD` in `.env` |
+| Finance reviewers | `finance1`, `finance2` | `RR_SEED_STAFF_PASSWORD` in `.env` |
+| Operations manager | `manager1` | `RR_SEED_STAFF_PASSWORD` in `.env` |
+| Admin (may act for any staff role) | `admin` | `RR_SEED_STAFF_PASSWORD` in `.env` |
 | Customers | order number + the email on the order (no password) | – |
 
 The staff password comes from `RR_SEED_STAFF_PASSWORD` (dev default above).

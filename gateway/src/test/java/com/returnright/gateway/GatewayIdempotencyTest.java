@@ -24,6 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Part 2 §12 / build plan S2: one payout per Idempotency-Key, mismatch -> 422, admin auth, fault profiles. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "gateway.admin-token=" + TestSecrets.GATEWAY_ADMIN_TOKEN,
         "spring.datasource.url=jdbc:h2:mem:gateway-test;DB_CLOSE_DELAY=-1",
         "gateway.faults.latency-ms-min=0",
         "gateway.faults.latency-ms-max=5",
@@ -31,7 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
 })
 class GatewayIdempotencyTest {
 
-    private static final String ADMIN = "dev-admin-token";
+    private static final String ADMIN = TestSecrets.GATEWAY_ADMIN_TOKEN;
 
     @LocalServerPort
     int port;

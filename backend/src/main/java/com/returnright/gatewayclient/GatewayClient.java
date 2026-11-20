@@ -1,8 +1,8 @@
 package com.returnright.gatewayclient;
 
-import com.returnright.core.Correlation;
-import com.returnright.core.Metrics;
-import com.returnright.core.RrProperties;
+import com.returnright.core.web.Correlation;
+import com.returnright.core.infra.Metrics;
+import com.returnright.core.config.RrProperties;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;

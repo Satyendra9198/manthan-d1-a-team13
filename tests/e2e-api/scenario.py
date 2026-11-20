@@ -9,6 +9,8 @@ Exit code 0 = all checks passed.
 from __future__ import annotations
 
 import json
+import os
+import pathlib
 import sys
 import threading
 import urllib.error
@@ -16,8 +18,23 @@ import urllib.request
 import uuid
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/") + "/api/v1"
-PASSWORD = "ReturnRight#2026"
 failures: list[str] = []
+
+
+def _secret(name: str) -> str:
+    """Secret from the environment, else from .env at the repo root (never hard-coded; see .env.example)."""
+    value = os.environ.get(name)
+    if value:
+        return value
+    for env_file in (pathlib.Path(__file__).resolve().parents[2] / ".env", pathlib.Path.cwd() / ".env"):
+        if env_file.is_file():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith(name + "="):
+                    return line.split("=", 1)[1].strip()
+    raise SystemExit(f"{name} is not set (export it or create .env from .env.example)")
+
+
+PASSWORD = _secret("RR_SEED_STAFF_PASSWORD")
 
 
 def call(method, path, token=None, body=None, headers=None):

@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Secrets live only in the repo-root .env (git-ignored; template: .env.example). In Docker they arrive as env vars.
+    import: "optional:file:.env[.properties],optional:file:../.env[.properties]"
   application:
     name: mock-gateway
   threads:
@@ -32,7 +35,7 @@ management:
       application: mock-gateway
 
 gateway:
-  admin-token: ${GATEWAY_ADMIN_TOKEN:dev-admin-token}
+  admin-token: ${GATEWAY_ADMIN_TOKEN}
   env: ${GATEWAY_ENV:dev}
   faults:
     latency-ms-min: ${LATENCY_MS_MIN:50}
