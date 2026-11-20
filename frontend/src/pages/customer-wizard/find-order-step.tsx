@@ -10,7 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TextField } from "@/components/ui/text-field"
-import { TRACK_RETURN_HREF } from "@/lib/hash-route"
+import { Link } from "react-router"
+import { TRACK_RETURN_PATH } from "@/config/customer-paths"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -145,12 +146,12 @@ export function FindOrderStep({ onFound, defaultValues }: FindOrderStepProps) {
 
       <p className="text-sm text-muted-foreground">
         Already started a return?{" "}
-        <a
-          href={TRACK_RETURN_HREF}
+        <Link
+          to={TRACK_RETURN_PATH}
           className="rounded-sm font-semibold text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           Track it
-        </a>
+        </Link>
       </p>
     </div>
   )

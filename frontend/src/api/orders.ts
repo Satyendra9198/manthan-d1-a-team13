@@ -18,8 +18,8 @@ export type OrderItem = {
   name: string
   /** e.g. "Apparel", "Electronics". */
   category: string
-  /** Amount paid for this item, in the order's currency (major units, e.g. rupees). */
-  price: number
+  /** Amount paid for this item, in paise (₹1,899 → 189900), like the rest of the API. */
+  pricePaise: number
   eligibility: ReturnEligibility
 }
 
@@ -29,8 +29,6 @@ export type Order = {
   customerName: string
   /** ISO date the order was delivered. */
   deliveredAt: string
-  /** ISO 4217 code, e.g. "INR". */
-  currency: string
   /** How the order was paid, shown as "UPI · ananya@okbank" or "Card · •••• 4242". */
   payment: { method: string; account: string }
   items: OrderItem[]

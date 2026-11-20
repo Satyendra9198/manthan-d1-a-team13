@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { LoaderCircle } from "lucide-react"
+import { Link, useNavigate } from "react-router"
 import { getReturn, type TrackedReturn } from "@/api/returns"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TextField } from "@/components/ui/text-field"
-import { returnStatusHref, START_RETURN_HREF } from "@/lib/hash-route"
+import { returnStatusPath, START_RETURN_PATH } from "@/config/customer-paths"
 import { CustomerHeader } from "@/pages/customer-wizard/customer-header"
 import { rememberLoadedReturn } from "@/pages/return-status/recent-returns"
 
@@ -27,6 +28,7 @@ export function TrackReturnPage() {
   const [lookupError, setLookupError] = useState<keyof typeof LOOKUP_ERRORS | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     document.documentElement.scrollTop = 0
@@ -58,7 +60,7 @@ export function TrackReturnPage() {
       return
     }
     rememberLoadedReturn(tracked)
-    window.location.hash = returnStatusHref(tracked.rmaNumber)
+    navigate(returnStatusPath(tracked.rmaNumber))
   }
 
   const message = lookupError && LOOKUP_ERRORS[lookupError]
@@ -107,12 +109,12 @@ export function TrackReturnPage() {
 
         <p className="text-sm text-muted-foreground">
           Need to send something back?{" "}
-          <a
-            href={START_RETURN_HREF}
+          <Link
+            to={START_RETURN_PATH}
             className="rounded-sm font-semibold text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             Start a return
-          </a>
+          </Link>
         </p>
       </main>
     </div>

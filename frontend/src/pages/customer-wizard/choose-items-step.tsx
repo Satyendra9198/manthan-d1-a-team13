@@ -3,7 +3,7 @@ import type { Order, OrderItem } from "@/api/orders"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { formatDate, formatMoney } from "@/lib/format"
+import { formatDate, formatPaise } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { WizardFooter } from "./wizard-footer"
 
@@ -26,7 +26,7 @@ export function ChooseItemsStep({
   const headingId = useId()
   const selectedItems = order.items.filter((item) => selectedIds.includes(item.id))
   const count = selectedItems.length
-  const refund = selectedItems.reduce((sum, item) => sum + item.price, 0)
+  const refund = selectedItems.reduce((sum, item) => sum + item.pricePaise, 0)
 
   function setSelected(itemId: string, selected: boolean) {
     onSelectedIdsChange(
@@ -50,7 +50,6 @@ export function ChooseItemsStep({
           <ItemOption
             key={item.id}
             item={item}
-            currency={order.currency}
             selected={selectedIds.includes(item.id)}
             onSelectedChange={(selected) => setSelected(item.id, selected)}
           />
@@ -63,7 +62,7 @@ export function ChooseItemsStep({
             {count === 0 ? "No items selected" : `${count} ${count === 1 ? "item" : "items"} selected`}
           </p>
           <p className="text-[13px] text-muted-foreground">
-            {count === 0 ? "Choose at least one item" : `Est. refund ${formatMoney(refund, order.currency)}`}
+            {count === 0 ? "Choose at least one item" : `Est. refund ${formatPaise(refund)}`}
           </p>
         </div>
         <Button variant="outline" onClick={onBack}>
@@ -79,13 +78,12 @@ export function ChooseItemsStep({
 
 type ItemOptionProps = {
   item: OrderItem
-  currency: string
   selected: boolean
   onSelectedChange: (selected: boolean) => void
 }
 
 /** One item as a selectable card; the whole card toggles the checkbox. */
-function ItemOption({ item, currency, selected, onSelectedChange }: ItemOptionProps) {
+function ItemOption({ item, selected, onSelectedChange }: ItemOptionProps) {
   const nameId = useId()
   const detailsId = useId()
   const eligibility = item.eligibility
@@ -123,7 +121,7 @@ function ItemOption({ item, currency, selected, onSelectedChange }: ItemOptionPr
         </div>
         <div id={detailsId} className="col-start-2 grid gap-1 text-[13px]">
           <p className="text-muted-foreground">
-            {item.category} · {formatMoney(item.price, currency)}
+            {item.category} · {formatPaise(item.pricePaise)}
           </p>
           <p className={returnable ? "text-muted-foreground" : "text-foreground"}>
             {eligibility.returnable

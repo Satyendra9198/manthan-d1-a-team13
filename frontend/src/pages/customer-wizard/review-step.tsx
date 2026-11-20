@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { formatMoney } from "@/lib/format"
+import { formatPaise } from "@/lib/format"
 import { WizardFooter } from "./wizard-footer"
 
 type ReviewStepProps = {
@@ -127,7 +127,7 @@ export function ReviewStep({
           <Row label="Refund method">{refundMethodText}</Row>
           <div className="flex items-baseline justify-between gap-4 border-t pt-3">
             <dt className="text-[15px] font-semibold">Estimated refund</dt>
-            <dd className="text-lg font-bold">{formatMoney(refund, order.currency)}</dd>
+            <dd className="text-lg font-bold">{formatPaise(refund)}</dd>
           </div>
         </dl>
       </Card>
@@ -165,7 +165,7 @@ export function ReviewStep({
             {items.length} {items.length === 1 ? "item" : "items"}
           </p>
           <p className="truncate text-[13px] text-muted-foreground">
-            Est. refund {formatMoney(refund, order.currency)}
+            Est. refund {formatPaise(refund)}
           </p>
         </div>
         <Button variant="outline" onClick={onBack} disabled={submitting}>

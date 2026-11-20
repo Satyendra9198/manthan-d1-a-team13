@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { CustomerWizard } from './customer-wizard'
 
@@ -13,7 +14,12 @@ const photo = (name: string, type = 'image/jpeg') => new File(['photo'], name, {
 
 function setup(options?: Parameters<typeof userEvent.setup>[0]) {
   const user = userEvent.setup(options)
-  render(<CustomerWizard />)
+  // The header and step 1 use router links.
+  render(
+    <MemoryRouter>
+      <CustomerWizard />
+    </MemoryRouter>,
+  )
 
   const orderNumber = () => screen.getByLabelText('Order number')
   const email = () => screen.getByLabelText('Email')

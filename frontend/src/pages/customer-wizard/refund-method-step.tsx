@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { formatMoney } from "@/lib/format"
+import { formatPaise } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { WizardFooter } from "./wizard-footer"
 
@@ -83,7 +83,7 @@ export function RefundMethodStep({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm">{REFUND_METHODS[value]}</p>
           <p className="truncate text-[13px] text-muted-foreground">
-            Est. refund {formatMoney(refund, order.currency)}
+            Est. refund {formatPaise(refund)}
           </p>
         </div>
         <Button variant="outline" onClick={onBack}>

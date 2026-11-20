@@ -1,8 +1,9 @@
 import { CheckIcon } from "lucide-react"
+import { Link } from "react-router"
 import { currentStage, type TrackedReturn } from "@/api/returns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { returnStatusHref } from "@/lib/hash-route"
+import { returnStatusPath } from "@/config/customer-paths"
 import { rememberLoadedReturn } from "@/pages/return-status/recent-returns"
 import { STAGE_BADGE_VARIANTS, STAGE_TITLES } from "@/pages/return-status/stages"
 
@@ -50,9 +51,9 @@ export function ReturnSubmitted({ tracked }: { tracked: TrackedReturn }) {
           </Button>
         )}
         <Button variant={label ? "outline" : "default"} asChild>
-          <a href={returnStatusHref(tracked.rmaNumber)} onClick={() => rememberLoadedReturn(tracked)}>
+          <Link to={returnStatusPath(tracked.rmaNumber)} onClick={() => rememberLoadedReturn(tracked)}>
             Track my return
-          </a>
+          </Link>
         </Button>
       </div>
     </div>

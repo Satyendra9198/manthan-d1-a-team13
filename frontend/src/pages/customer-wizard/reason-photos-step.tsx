@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { formatMoney } from "@/lib/format"
+import { formatPaise } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { PhotoPicker } from "./photo-picker"
 import { WizardFooter } from "./wizard-footer"
@@ -20,7 +20,6 @@ import { WizardFooter } from "./wizard-footer"
 type ReasonPhotosStepProps = {
   /** The items picked in step 2, in order. */
   items: OrderItem[]
-  currency: string
   details: Record<string, ItemReturnDetails>
   onDetailsChange: (itemId: string, details: ItemReturnDetails) => void
   /** Which item is on screen. */
@@ -35,7 +34,6 @@ type ReasonPhotosStepProps = {
 /** Wizard step 3: a reason, optional notes and photos for each item, one item at a time. */
 export function ReasonPhotosStep({
   items,
-  currency,
   details,
   onDetailsChange,
   activeIndex,
@@ -137,7 +135,7 @@ export function ReasonPhotosStep({
           Why are you returning it?
         </h1>
         <p className="text-sm text-muted-foreground">
-          {item.name} · {item.category} · {formatMoney(item.price, currency)}
+          {item.name} · {item.category} · {formatPaise(item.pricePaise)}
         </p>
       </div>
 

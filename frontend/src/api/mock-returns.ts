@@ -19,8 +19,7 @@ const MOCK_RETURNS = new Map<string, TrackedReturn>(
         rmaNumber: "RMA-2026-00731",
         orderNumber: "RR-10482",
         email: "ananya.rao@example.com",
-        currency: "INR",
-        items: [{ name: "Linen shirt", price: 1899 }],
+        items: [{ name: "Linen shirt", pricePaise: 189900 }],
         refundMethod: "original_payment",
         payment: { method: "UPI", account: "ananya@okbank" },
         events: [
@@ -34,8 +33,7 @@ const MOCK_RETURNS = new Map<string, TrackedReturn>(
         rmaNumber: "RMA-2026-00689",
         orderNumber: "RR-10391",
         email: "ananya.rao@example.com",
-        currency: "INR",
-        items: [{ name: "Linen shirt", price: 1899 }],
+        items: [{ name: "Linen shirt", pricePaise: 189900 }],
         refundMethod: "original_payment",
         payment: { method: "UPI", account: "ananya@okbank" },
         events: [
@@ -48,7 +46,7 @@ const MOCK_RETURNS = new Map<string, TrackedReturn>(
         ],
         label: MOCK_LABEL,
         refund: {
-          amount: 949.5,
+          amountPaise: 94950,
           paidAt: "2026-11-20T15:44:00+05:30",
           reference: "GW-7781-2026",
           adjustment:
@@ -59,8 +57,7 @@ const MOCK_RETURNS = new Map<string, TrackedReturn>(
         rmaNumber: "RMA-2026-00702",
         orderNumber: "RR-10377",
         email: "ananya.rao@example.com",
-        currency: "INR",
-        items: [{ name: "Denim shorts", price: 1499 }],
+        items: [{ name: "Denim shorts", pricePaise: 149900 }],
         refundMethod: "original_payment",
         payment: { method: "UPI", account: "ananya@okbank" },
         events: [

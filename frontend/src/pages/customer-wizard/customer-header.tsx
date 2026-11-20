@@ -1,4 +1,6 @@
-import { START_RETURN_HREF, TRACK_RETURN_HREF } from "@/lib/hash-route"
+import { Link } from "react-router"
+import { START_RETURN_PATH, TRACK_RETURN_PATH } from "@/config/customer-paths"
+import { supportMailto } from "@/config/support"
 
 type CustomerHeaderProps = {
   /** Which main link is the page being shown. */
@@ -8,8 +10,8 @@ type CustomerHeaderProps = {
 }
 
 const LINKS = [
-  { page: "start-return", label: "Start a return", href: START_RETURN_HREF },
-  { page: "track-return", label: "Track a return", href: TRACK_RETURN_HREF },
+  { page: "start-return", label: "Start a return", to: START_RETURN_PATH },
+  { page: "track-return", label: "Track a return", to: TRACK_RETURN_PATH },
 ] as const
 
 /**
@@ -29,21 +31,20 @@ export function CustomerHeader({ current, onStartReturn }: CustomerHeaderProps) 
           className="order-last -mx-4 flex w-[calc(100%+2rem)] border-t sm:order-none sm:mx-0 sm:w-auto sm:gap-6 sm:border-0"
         >
           {LINKS.map((link) => (
-            <a
+            <Link
               key={link.page}
-              href={link.href}
+              to={link.to}
               aria-current={current === link.page ? "page" : undefined}
               onClick={link.page === "start-return" ? onStartReturn : undefined}
               className="flex-1 border-b-2 border-transparent py-2.5 text-center text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground sm:flex-none sm:py-3.5"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
-        {/* TODO: link to the help page once it exists. */}
         <a
-          href="#help"
+          href={supportMailto()}
           className="ml-auto rounded-sm text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           Need help?

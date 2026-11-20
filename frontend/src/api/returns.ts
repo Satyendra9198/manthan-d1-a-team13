@@ -89,8 +89,8 @@ export type TrackedReturn = {
   rmaNumber: string
   orderNumber: string
   email: string
-  currency: string
-  items: { name: string; price: number }[]
+  /** Prices in paise. */
+  items: { name: string; pricePaise: number }[]
   refundMethod: RefundMethod
   /** The order's payment, for refunds to the original payment method. */
   payment: { method: string; account: string }
@@ -100,7 +100,7 @@ export type TrackedReturn = {
   label?: { qrCodeUrl: string; downloadUrl: string }
   /** Present once the refund is paid. */
   refund?: {
-    amount: number
+    amountPaise: number
     /** ISO date-time. */
     paidAt: string
     /** Payment reference the customer can quote to their bank. */
@@ -139,10 +139,9 @@ export async function submitReturn(request: ReturnRequest): Promise<TrackedRetur
     rmaNumber: `RMA-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`,
     orderNumber: order.orderNumber,
     email: order.email,
-    currency: order.currency,
     items: order.items
       .filter((item) => itemIds.includes(item.id))
-      .map((item) => ({ name: item.name, price: item.price })),
+      .map((item) => ({ name: item.name, pricePaise: item.pricePaise })),
     refundMethod: request.refundMethod,
     payment: order.payment,
     events: [

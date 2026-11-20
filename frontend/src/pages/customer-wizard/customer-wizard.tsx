@@ -49,7 +49,7 @@ function ReturnWizard({ onRestart }: { onRestart: () => void }) {
   }, [view])
 
   const selectedItems = order ? order.items.filter((item) => selectedItemIds.includes(item.id)) : []
-  const estimatedRefund = selectedItems.reduce((sum, item) => sum + item.price, 0)
+  const estimatedRefund = selectedItems.reduce((sum, item) => sum + item.pricePaise, 0)
 
   function renderStep() {
     if (step === 1 || !order) {
@@ -89,7 +89,6 @@ function ReturnWizard({ onRestart }: { onRestart: () => void }) {
       return (
         <ReasonPhotosStep
           items={selectedItems}
-          currency={order.currency}
           details={itemDetails}
           onDetailsChange={(itemId, details) =>
             setItemDetails((current) => ({ ...current, [itemId]: details }))
