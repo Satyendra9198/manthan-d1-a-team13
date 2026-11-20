@@ -20,7 +20,7 @@ Compose, CI workflow. Everything below was **run and passed** on the final stack
 | Load ("approve storm") | 0 failures, 163 payouts / 163 refunds, reconciliation clean | see `tests/load/locustfile.py` header |
 | Streaming | 1470 events published, 656 emails in Mailpit | `RR_KAFKA_ENABLED=true docker compose --profile streaming up -d` |
 
-The CI workflow (`.github/workflows/ci.yml`) passes `actionlint` but has **not run on GitHub yet**. Check the first run.
+CI (`.github/workflows/ci.yml`) has run on GitHub: all 5 jobs green (backend, gateway, notifier, frontend, end-to-end) for `7b32f24`.
 
 ## 2. Start here (clean machine)
 

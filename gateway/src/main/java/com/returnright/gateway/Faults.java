@@ -82,6 +82,8 @@ public class Faults {
             case "slow" -> new Config(2000, 6000, 0, b.timeoutSleepMs(), 0, 0, 0, 0, 0, b.settleSeconds());
             case "flaky" -> new Config(50, 400, 0.1, b.timeoutSleepMs(), 0.2, 0, 0, 0, 0, b.settleSeconds());
             case "lost-responses" -> new Config(50, 200, 0, b.timeoutSleepMs(), 0, 0, 0.5, 0, 0, b.settleSeconds());
+            // every payout succeeds but its reply is lost: deterministic for live demos (ADR-001 scenario C)
+            case "lost-all" -> new Config(50, 200, 0, b.timeoutSleepMs(), 0, 0, 1.0, 0, 0, b.settleSeconds());
             case "blackhole" -> new Config(50, 200, 1.0, b.timeoutSleepMs(), 0, 0, 0, 0, 0, b.settleSeconds());
             case "declines" -> new Config(50, 200, 0, b.timeoutSleepMs(), 0, 0, 0, 0.3, 0, b.settleSeconds());
             case "processing" -> new Config(50, 200, 0, b.timeoutSleepMs(), 0, 0, 0, 0, 0.5, b.settleSeconds());

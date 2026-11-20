@@ -123,6 +123,19 @@ class GatewayIdempotencyTest {
         assertThat(send("GET", "/v1/refunds/" + key, null, Map.of()).body().get("status")).isEqualTo("SUCCEEDED");
     }
 
+    @Test
+    void lostAllProfilePaysButNeverAnswersTheFirstCall() throws Exception {   // deterministic demo of ADR-001 case C
+        Res profile = send("POST", "/admin/faults/profile/lost-all", null, Map.of("X-Admin-Token", ADMIN));
+        assertThat(profile.status()).isEqualTo(200);
+        assertThat(((Number) profile.body().get("drop_response_rate")).doubleValue()).isEqualTo(1.0);
+        String key = "rr-" + UUID.randomUUID() + "-1";
+
+        refund(key, "pay_UPI_7", 120_000);   // committed, reply held back (timeout-sleep-ms)
+
+        assertThat(payoutsFor(key)).isEqualTo(1);
+        assertThat(send("GET", "/v1/refunds/" + key, null, Map.of()).body().get("status")).isEqualTo("SUCCEEDED");
+    }
+
     // ----------------------------------------------------------------------------------------------- helpers
 
     record Res(int status, Map<String, Object> body, String raw, java.net.http.HttpHeaders headers) {}

@@ -152,7 +152,7 @@ Arrows mean "may be used by". A module may only depend on layers to its left.
 
 The single place where a return or return item changes state (Part 1 §4.5).
 
-- **Transition table is data.** `defineTable()` registers `(from status, event) -> list of Transition(to, roles, guard)`. For `ROUTE` the first candidate whose predicate holds wins (T10, then T11, then T12). `allowedPairs()` exposes the status pairs; `TransitionTableTest` and the `TransitionTableParityTest` mentioned in V2 compare them with the SQL trigger `trg_returns_valid_transition` [BR-6].
+- **Transition table is data.** `defineTable()` registers `(from status, event) -> list of Transition(to, roles, guard)`. For `ROUTE` the first candidate whose predicate holds wins (T10, then T11, then T12). `allowedPairs()` exposes the status pairs; `TransitionTableTest` and the `TransitionTableTest` mentioned in V2 compare them with the SQL trigger `trg_returns_valid_transition` [BR-6].
 - **`apply(returnId, event, actor, expectedVersion, payload)`** runs in the caller's transaction. Order of checks: row lock (`PESSIMISTIC_WRITE`) then ownership (a miss is `404`, never `403`) then `If-Match` version (`409 STALE_VERSION`) then transition exists (`409 ILLEGAL_TRANSITION`, details carry current state and event) then role (`403 FORBIDDEN_ROLE`) then guards (`422`). ADMIN may act for any staff role, not for customers or the system.
 - **Per-step flush.** `em.flush()` after every transition so the database trigger sees each step; chained steps such as T1 then T2, or T9 then ROUTE, therefore each pass the trigger [BR-4][BR-6].
 - **Effects in the same transaction:** items, labels, refund rows (through `RefundService.initiate`), ledger (through `RefundService`), audit (`AuditService.record`), notifications, outbox event, metrics counters. Anything external is registered as an after-commit synchronization.
@@ -547,7 +547,7 @@ Alerts (`infra/prometheus/alerts.yml`, visible in Prometheus `/alerts`; there is
 | Alert | Condition | Meaning |
 |---|---|---|
 | `RefundSuccessRateLow` | success ratio below 0.90 over 5 min while attempts are flowing, for 2 min | Gateway degraded; UNKNOWN attempts reconcile on their own, do not retry by hand |
-| `RefundReconciliationStuck` | oldest UNKNOWN attempt older than 900 s, for 1 min | Press Recheck on the attempt; the alert text points at `docs/runbooks/refund-unknown.md`, which does not exist in the repo (see `RUNBOOK.md`) |
+| `RefundReconciliationStuck` | oldest UNKNOWN attempt older than 900 s, for 1 min | Press Recheck on the attempt; the alert text points at `docs/RUNBOOK.md` (Operations > Alerts) |
 | `LedgerReconciliationMismatch` | any R1, R2 or R4 mismatch for 1 min | Possible double payment or missing posting |
 
 Grafana dashboard "ReturnRight - Operations" (`infra/grafana/dashboards/returnright.json`), rows: Money path (refund success rate, UNKNOWN attempts, oldest unresolved attempt, reconciliation mismatches, attempts by outcome, replays and conflicts), Gateway (latency p50/p95/p99, calls by outcome, injected faults), Workflow (transitions per minute, open returns by status, eligibility rejections), API (requests per second by status, p95 latency by route), Business (live SQL as `rr_readonly`: return rate by category, top reasons, flagged customers). Prometheus scrapes `app:8000` and `gateway:8100` at `/actuator/prometheus`.

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # "Break the gateway" on demand (Part 2 §12.2).
-# Usage: infra/scripts/chaos.sh <healthy|slow|flaky|lost-responses|blackhole|declines|processing|status>
+# Usage: infra/scripts/chaos.sh <healthy|slow|flaky|lost-responses|lost-all|blackhole|declines|processing|status>
 # The admin token comes from $GATEWAY_ADMIN_TOKEN, else from .env at the repo root. Nothing secret is stored here.
 set -eu
 PROFILE="${1:?profile required}"

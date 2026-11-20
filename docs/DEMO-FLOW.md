@@ -55,7 +55,7 @@ flowchart LR
 | 6 | Finance | `finance1` → queue → `RR-DEMO-101` → Approve | Over ₹10,000 needs finance [A-12][T13] |
 | 7 | Finance | `finance1` and `finance2` in two browsers approve `RR-DEMO-104` together | Exactly one wins; the other sees "updated by someone else" [F-04] |
 | 8 | Finance | `RR-DEMO-103` (refund failed) → Retry → store credit | Definitive decline vs retry [T16][T17][A-17] |
-| 9 | SRE + all | Customer returns laptop `RR-EDGE-009` → warehouse scans, grades A, completes (> ₹10,000 → finance queue). Run `infra/scripts/chaos.ps1 lost-responses`, finance approves, then `chaos.ps1 healthy` | Gateway paid but reply lost → *UNKNOWN* → reconciler → *Refunded*, **one** payout (ADR-001) |
+| 9 | SRE + all | Customer returns laptop `RR-EDGE-009` → warehouse scans, grades A, completes (> ₹10,000 → finance queue). Run `infra/scripts/chaos.ps1 lost-all`, finance approves, then `chaos.ps1 healthy` | Gateway paid but reply lost → *UNKNOWN* → reconciler → *Refunded*, **one** payout (ADR-001) |
 | 10 | Manager | `manager1` → Dashboard, Flagged customers, Audit log, Reconciliation | Analytics, audit trail, ledger reconciles (R1–R5 = 0) |
 | 11 | Anyone | pgAdmin → `ledger_entries` → try an `UPDATE` | Rejected: ledger is append-only [BR-19] |
 

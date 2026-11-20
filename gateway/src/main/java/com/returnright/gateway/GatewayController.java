@@ -175,7 +175,7 @@ public class GatewayController {
             return forbidden();
         }
         return faults.applyProfile(name) ? ResponseEntity.ok(faults.describe())
-                : error(404, "UNKNOWN_PROFILE", "Profiles: healthy, slow, flaky, lost-responses, blackhole, declines, processing");
+                : error(404, "UNKNOWN_PROFILE", "Profiles: healthy, slow, flaky, lost-responses, lost-all, blackhole, declines, processing");
     }
 
     @PostMapping("/admin/faults/reset")

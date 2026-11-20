@@ -24,7 +24,7 @@ groups:
           severity: ticket
         annotations:
           summary: "A refund attempt has been UNKNOWN for more than 15 minutes"
-          description: "Follow docs/runbooks/refund-unknown.md"
+          description: "docs/RUNBOOK.md, Operations > Alerts: press Recheck with gateway; never retry an UNKNOWN attempt (ADR-001)"
       - alert: LedgerReconciliationMismatch
         expr: max(rr_reconciliation_mismatches{check=~"R1|R2|R4"}) > 0
         for: 1m

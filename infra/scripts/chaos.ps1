@@ -1,5 +1,5 @@
 # "Break the gateway" on demand (Part 2 §12.2).
-# Usage: infra/scripts/chaos.ps1 <healthy|slow|flaky|lost-responses|blackhole|declines|processing|status>
+# Usage: infra/scripts/chaos.ps1 <healthy|slow|flaky|lost-responses|lost-all|blackhole|declines|processing|status>
 # The admin token comes from $env:GATEWAY_ADMIN_TOKEN, else from .env at the repo root. Nothing secret is stored here.
 param([Parameter(Mandatory = $true)][string]$Profile,
       [string]$Gateway = "http://localhost:8100")

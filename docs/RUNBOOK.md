@@ -169,13 +169,13 @@ Leave `RR-DEMO-104` unapproved for Act 4.
 
 | # | Who | Do | Expected | Proves |
 |---|---|---|---|---|
-| 15 | Presenter | `infra/scripts/chaos.ps1 lost-responses` | Gateway reports the active profile | Fault injection |
+| 15 | Presenter | `infra/scripts/chaos.ps1 lost-all` | Gateway reports the active profile | Fault injection |
 | 16 | `finance1` | Open `RR-DEMO-104`, click "Approve refund", confirm | Toast "Checking with payment gateway..." and a banner saying the outcome is not final; return stays `REFUND_PENDING`; the attempt shows `UNKNOWN` with a "Recheck with gateway" button | Timeout or lost response is `UNKNOWN`, never `FAILED`; no human retry button [ADR-001, F-03] |
 | 17 | Presenter | Wait about 15 to 30 seconds without clicking anything | The page refreshes by itself and the return becomes Refunded | The reconciler asks the gateway with the same key and finishes the refund [F-03] |
 | 18 | Presenter | `curl.exe -s -H "X-Admin-Token: <value of GATEWAY_ADMIN_TOKEN>" http://localhost:8100/admin/refunds` (read the token from `.env`; do not show it) or pgAdmin, or the manager reconciliation page | Exactly one gateway payout for that refund; reconciliation all green | Exactly-once payout |
 | 19 | Presenter | `infra/scripts/chaos.ps1 healthy` | Back to normal | |
 
-The `lost-responses` profile drops about half of the gateway responses (deterministic with `FAULT_SEED`). If step 16 settles immediately, the response was not lost on that call: repeat with another pending return (the seeded history contains more `PENDING_FINANCE` returns in the queue) until you see the `UNKNOWN` state.
+The `lost-all` profile makes the gateway pay and then drop every response, so step 16 always shows the UNKNOWN → reconciler path (`lost-responses` drops about half, for load tests).
 
 Observability (optional, 1 min): run `infra/scripts/chaos.ps1 flaky`, approve or let a few refunds run, then in Grafana ("ReturnRight - Operations") watch the refund success rate and gateway panels; in Prometheus `/alerts` `RefundSuccessRateLow` goes pending then firing after about 2 minutes below 90 percent. Then `chaos.ps1 healthy`. This alert behaviour has not yet been observed end to end (`HANDOFF.md` item 4), so rehearse it first.
 
@@ -277,5 +277,5 @@ docker run --rm -v "${PWD}:/repo" -v //var/run/docker.sock:/var/run/docker.sock 
 - [ ] Two private windows ready for `finance1` and `finance2`
 - [ ] Grafana dashboard loads; Prometheus `/alerts` loads
 - [ ] pgAdmin owner server connects (password from `RR_OWNER_DB_PASSWORD`)
-- [ ] Rehearsed the `lost-responses` step once (it is probabilistic) and the `flaky` alert once
+- [ ] Rehearsed the `lost-all` step once and the `flaky` alert once
 - [ ] Optional: streaming profile up and Mailpit open
