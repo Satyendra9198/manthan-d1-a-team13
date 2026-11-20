@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,19 @@ public class LocalPhotoStorage implements PhotoStorage {
       Files.write(target, content, StandardOpenOption.CREATE_NEW);
     } catch (IOException ex) {
       throw new UncheckedIOException("Could not store photo " + key, ex);
+    }
+  }
+
+  @Override
+  public Optional<byte[]> load(String key) {
+    Path source = resolve(key);
+    if (!Files.isRegularFile(source)) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Files.readAllBytes(source));
+    } catch (IOException ex) {
+      throw new UncheckedIOException("Could not read photo " + key, ex);
     }
   }
 
