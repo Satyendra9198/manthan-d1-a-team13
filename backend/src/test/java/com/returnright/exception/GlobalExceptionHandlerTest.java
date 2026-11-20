@@ -9,6 +9,7 @@ import com.returnright.model.enums.Role;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,5 +59,26 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().code()).isEqualTo("INVALID_REQUEST");
     assertThat(response.getBody().message()).isEqualTo("amount must be positive");
+  }
+
+  @Test
+  void orderNotFoundIsReportedAsNotFound() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleOrderNotFound(new OrderNotFoundException());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody().code()).isEqualTo("ORDER_NOT_FOUND");
+  }
+
+  @Test
+  void rejectedSelectionIsReportedAsUnprocessableWithEveryProblem() {
+    List<String> problems = List.of("item-1: not part of the order", "item-2: window closed");
+
+    ResponseEntity<ErrorResponse> response =
+        handler.handleItemSelectionRejected(new ItemSelectionRejectedException(problems));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getBody().code()).isEqualTo("SELECTION_NOT_RETURNABLE");
+    assertThat(response.getBody().details()).isEqualTo(problems);
   }
 }
