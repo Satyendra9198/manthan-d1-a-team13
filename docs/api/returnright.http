@@ -171,3 +171,134 @@ Content-Type: application/json
   "detailsConfirmed": false
 }
 --ReturnRightBoundary--
+
+### ─── 4. Track a return ───────────────────────────────────────────
+
+### 4a. Refunded at 50% after grade C ("Why ₹949.50 and not ₹1,899?")
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00007", "email": "neha.gupta@example.com"}
+
+### 4b. Rejected after inspection
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00008", "email": "sanjay.rao@example.com"}
+
+### 4c. In transit, with the label
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00011", "email": "farah.khan@example.com"}
+
+### 4d. Wrong email → 404 RETURN_NOT_FOUND
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00007", "email": "someone@example.com"}
+
+### ─── 5. Staff sign-in (run these first; the token is saved for later requests) ─
+
+### 5a. Warehouse agent
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "riya.warehouse@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("agentToken", response.body.accessToken); %}
+
+### 5b. Finance reviewer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "kavya.finance@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("financeToken", response.body.accessToken); %}
+
+### 5c. Operations manager
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "manoj.ops@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("opsToken", response.body.accessToken); %}
+
+### 5d. Wrong password → 401 INVALID_CREDENTIALS
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "riya.warehouse@returnright.example", "password": "wrong"}
+
+### 5e. Who am I
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{agentToken}}
+
+### ─── 6. Warehouse ────────────────────────────────────────────────
+
+### 6a. Queue of received parcels
+GET {{baseUrl}}/api/v1/warehouse/returns/queue
+Authorization: Bearer {{agentToken}}
+
+### 6b. Find return (scan)
+GET {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00006
+Authorization: Bearer {{agentToken}}
+
+### 6c. Scan in the in-transit parcel
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00011/receive
+Authorization: Bearer {{agentToken}}
+
+### 6d. Inspect: sweater grade C, 1 of 2 wallets accepted (partial accept) → paid at once
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00006/inspection
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {"returnItemId": "77777777-bbbb-0000-0000-000000000001", "grade": "C", "acceptedQuantity": 1},
+    {"returnItemId": "77777777-bbbb-0000-0000-000000000002", "grade": "A", "acceptedQuantity": 1,
+     "rejectionReason": "MISSING_PARTS_OR_TAGS", "note": "One wallet without tags"}
+  ]
+}
+
+### 6e. Reject (after 6c)
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00011/reject
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{"reason": "NOT_AS_DESCRIBED", "note": "Vase is intact, no chip found"}
+
+### 6f. Today's counter
+GET {{baseUrl}}/api/v1/warehouse/inspections/today
+Authorization: Bearer {{agentToken}}
+
+### 6g. Finance token on a warehouse endpoint → 403 FORBIDDEN
+GET {{baseUrl}}/api/v1/warehouse/returns/queue
+Authorization: Bearer {{financeToken}}
+
+### ─── 7. Finance ──────────────────────────────────────────────────
+
+### 7a. Refunds waiting for approval
+GET {{baseUrl}}/api/v1/finance/returns/pending
+Authorization: Bearer {{financeToken}}
+
+### 7b. Approve the laptop refund → REFUNDED
+POST {{baseUrl}}/api/v1/finance/returns/RMA-DEMO-00009/approve
+Authorization: Bearer {{financeToken}}
+
+### ─── 8. Operations ───────────────────────────────────────────────
+
+### 8a. Flagged returns
+GET {{baseUrl}}/api/v1/operations/returns/flagged
+Authorization: Bearer {{opsToken}}
+
+### 8b. Approve Meera's flagged return → label ready
+POST {{baseUrl}}/api/v1/operations/returns/RMA-DEMO-00010/approve
+Authorization: Bearer {{opsToken}}
+
+### 8c. Or decline it (instead of 8b)
+POST {{baseUrl}}/api/v1/operations/returns/RMA-DEMO-00010/decline
+Authorization: Bearer {{opsToken}}
+Content-Type: application/json
+
+{"note": "Repeated returns of worn items"}
