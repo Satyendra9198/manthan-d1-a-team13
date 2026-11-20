@@ -1,0 +1,304 @@
+### ReturnRight customer API — local test requests
+### Run from IntelliJ (HTTP Client) or VS Code (REST Client extension).
+### Needs the backend running with the dev profile so the demo orders exist (see README.md).
+
+@baseUrl = http://localhost:8080
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### ─── 1. Order lookup ─────────────────────────────────────────────
+
+### 1a. Mixed basket: 2 returnable, 1 window expired, 1 non-returnable
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10482", "email": "aditi.sharma@example.com"}
+
+### 1b. Case and spaces are ignored
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "  rr-10482 ", "email": "Aditi.Sharma@Example.com"}
+
+### 1c. Earlier returns: shoes 1 of 2 left, lamp already returned, speaker returnable again
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10655", "email": "vikram.singh@example.com"}
+
+### 1d. Not delivered yet
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10577", "email": "rahul.verma@example.com"}
+
+### 1e. Every window closed
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10388", "email": "arjun.mehta@example.com"}
+
+### 1f. Wrong email → 404 ORDER_NOT_FOUND
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10482", "email": "someone.else@example.com"}
+
+### 1g. Invalid input → 400 VALIDATION_FAILED
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "", "email": "not-an-email"}
+
+### ─── 2. Item selection ───────────────────────────────────────────
+
+### 2a. Valid: 2 of 3 T-shirts + 1 sunscreen
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000001", "quantity": 2},
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1}
+  ]
+}
+
+### 2b. 422: 2 shoes but only 1 left, lamp already returned, item from another order
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10655",
+  "email": "vikram.singh@example.com",
+  "items": [
+    {"itemId": "44444444-0000-0000-0000-000000000001", "quantity": 2},
+    {"itemId": "44444444-0000-0000-0000-000000000002", "quantity": 1},
+    {"itemId": "33333333-0000-0000-0000-000000000004", "quantity": 1}
+  ]
+}
+
+### 2c. 400: empty selection
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{"orderNumber": "RR-10601", "email": "priya.nair@example.com", "items": []}
+
+### ─── 3. Submit return (multipart) ────────────────────────────────
+### Photos: the file path is relative to this .http file. sample-photo.jpg sits next to it.
+
+### 3a. Approved with label ready: 1 T-shirt, damaged, with a photo
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000001", "quantity": 1,
+     "reason": "DAMAGED_ON_ARRIVAL", "comment": "Hole near the collar."}
+  ],
+  "refundMethod": "ORIGINAL_PAYMENT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary
+Content-Disposition: form-data; name="photos.33333333-0000-0000-0000-000000000001"; filename="sample-photo.jpg"
+Content-Type: image/jpeg
+
+< ./sample-photo.jpg
+--ReturnRightBoundary--
+
+### 3b. Flagged customer (4th return in 30 days) → status REQUESTED, labelReady false
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10702",
+  "email": "meera.iyer@example.com",
+  "items": [
+    {"itemId": "55555555-0000-0000-0000-000000000004", "quantity": 1, "reason": "TOO_BIG"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary--
+
+### 3c. 422 INVALID_PHOTOS: "Not as described" needs at least one photo
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1,
+     "reason": "NOT_AS_DESCRIBED"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary--
+
+### 3d. 400 VALIDATION_FAILED: checkbox not ticked
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1, "reason": "TOO_BIG"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": false
+}
+--ReturnRightBoundary--
+
+### ─── 4. Track a return ───────────────────────────────────────────
+
+### 4a. Refunded at 50% after grade C ("Why ₹949.50 and not ₹1,899?")
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00007", "email": "neha.gupta@example.com"}
+
+### 4b. Rejected after inspection
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00008", "email": "sanjay.rao@example.com"}
+
+### 4c. In transit, with the label
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00011", "email": "farah.khan@example.com"}
+
+### 4d. Wrong email → 404 RETURN_NOT_FOUND
+POST {{baseUrl}}/api/v1/customer/returns/track
+Content-Type: application/json
+
+{"rmaNumber": "RMA-DEMO-00007", "email": "someone@example.com"}
+
+### ─── 5. Staff sign-in (run these first; the token is saved for later requests) ─
+
+### 5a. Warehouse agent
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "riya.warehouse@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("agentToken", response.body.accessToken); %}
+
+### 5b. Finance reviewer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "kavya.finance@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("financeToken", response.body.accessToken); %}
+
+### 5c. Operations manager
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "manoj.ops@returnright.example", "password": "Password@123"}
+
+> {% client.global.set("opsToken", response.body.accessToken); %}
+
+### 5d. Wrong password → 401 INVALID_CREDENTIALS
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{"email": "riya.warehouse@returnright.example", "password": "wrong"}
+
+### 5e. Who am I
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{agentToken}}
+
+### ─── 6. Warehouse ────────────────────────────────────────────────
+
+### 6a. Queue of received parcels
+GET {{baseUrl}}/api/v1/warehouse/returns/queue
+Authorization: Bearer {{agentToken}}
+
+### 6b. Find return (scan)
+GET {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00006
+Authorization: Bearer {{agentToken}}
+
+### 6c. Scan in the in-transit parcel
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00011/receive
+Authorization: Bearer {{agentToken}}
+
+### 6d. Inspect: sweater grade C, 1 of 2 wallets accepted (partial accept) → paid at once
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00006/inspection
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {"returnItemId": "77777777-bbbb-0000-0000-000000000001", "grade": "C", "acceptedQuantity": 1},
+    {"returnItemId": "77777777-bbbb-0000-0000-000000000002", "grade": "A", "acceptedQuantity": 1,
+     "rejectionReason": "MISSING_PARTS_OR_TAGS", "note": "One wallet without tags"}
+  ]
+}
+
+### 6e. Reject (after 6c)
+POST {{baseUrl}}/api/v1/warehouse/returns/RMA-DEMO-00011/reject
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{"reason": "NOT_AS_DESCRIBED", "note": "Vase is intact, no chip found"}
+
+### 6f. Today's counter
+GET {{baseUrl}}/api/v1/warehouse/inspections/today
+Authorization: Bearer {{agentToken}}
+
+### 6g. Finance token on a warehouse endpoint → 403 FORBIDDEN
+GET {{baseUrl}}/api/v1/warehouse/returns/queue
+Authorization: Bearer {{financeToken}}
+
+### ─── 7. Finance ──────────────────────────────────────────────────
+
+### 7a. Refunds waiting for approval
+GET {{baseUrl}}/api/v1/finance/returns/pending
+Authorization: Bearer {{financeToken}}
+
+### 7b. Approve the laptop refund → REFUNDED
+POST {{baseUrl}}/api/v1/finance/returns/RMA-DEMO-00009/approve
+Authorization: Bearer {{financeToken}}
+
+### ─── 8. Operations ───────────────────────────────────────────────
+
+### 8a. Flagged returns
+GET {{baseUrl}}/api/v1/operations/returns/flagged
+Authorization: Bearer {{opsToken}}
+
+### 8b. Approve Meera's flagged return → label ready
+POST {{baseUrl}}/api/v1/operations/returns/RMA-DEMO-00010/approve
+Authorization: Bearer {{opsToken}}
+
+### 8c. Or decline it (instead of 8b)
+POST {{baseUrl}}/api/v1/operations/returns/RMA-DEMO-00010/decline
+Authorization: Bearer {{opsToken}}
+Content-Type: application/json
+
+{"note": "Repeated returns of worn items"}

@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: returnright-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/returnright}
+    username: ${DB_USERNAME:returnright}
+    password: ${DB_PASSWORD:change-me}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 40MB
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+returnright:
+  photos:
+    directory: ${PHOTO_DIRECTORY:./data/photos}
+  security:
+    jwt-secret: ${JWT_SECRET:}
+    token-ttl: 8h
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -1,3 +1,4 @@
+import { USE_MOCKS } from '@/api/client'
 import { PageHeader } from '@/components/layout/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,13 @@ export function RefundsLedgerPage() {
         description="Every gateway attempt and every ledger posting. Retries always reuse the same key."
         actions={r.failed.length > 0 && <Badge variant="danger">{failedCountLabel(r.failed.length)}</Badge>}
       />
+
+      {!USE_MOCKS && (
+        <p role="note" className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
+          Sample data. The backend doesn't expose refund records or a ledger yet, so this screen
+          still uses the built-in demo data.
+        </p>
+      )}
 
       {r.result && (
         <p
