@@ -66,8 +66,15 @@ public class FinanceService {
     }
 
     public UUID recheck(Actor actor, UUID attemptId) {
-        refunds.recheck(attemptId, actor);
-        return refunds.attemptReturnId(attemptId);
+        // The reviewer only asks for a gateway lookup; the gateway's answer decides the outcome. T15/T16
+        // (REFUND_SUCCEEDED / REFUND_FAILED) are SYSTEM transitions, so apply them as SYSTEM - exactly like the
+        // reconciler - and keep the human who asked in the audit trail. Passing the reviewer here made the state
+        // machine reject the outcome with 403 FORBIDDEN_ROLE, so "Recheck" could never resolve an UNKNOWN attempt.
+        refunds.recheck(attemptId, Actor.system("recheck"));
+        UUID returnId = refunds.attemptReturnId(attemptId);
+        tx.executeWithoutResult(s -> audit.record(actor, "refund_attempt", attemptId.toString(), "RECHECK_REQUESTED",
+                null, null, null, null, Map.of("return_id", returnId.toString())));
+        return returnId;
     }
 
     /** Lock first, then validate, so two reviewers serialise and the loser gets a clean 409 (F-04). */
