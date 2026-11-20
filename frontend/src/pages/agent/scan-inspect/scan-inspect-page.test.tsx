@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
 import { inspectionApi } from '@/api/inspection'
-import { getMockLedger } from '@/api/mocks/inspection.mock'
+import { getNewPayments } from '@/api/mocks/inspection.mock'
 import { ScanInspectPage } from './scan-inspect-page'
 
 type User = ReturnType<typeof userEvent.setup>
@@ -97,7 +97,7 @@ describe('Scan & inspect page', () => {
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       )
       expect(await screen.findByRole('status')).toHaveTextContent('Refund of ₹949.50 paid.')
-      expect(getMockLedger()).toHaveLength(1)
+      expect(getNewPayments()).toHaveLength(1)
     })
 
     it('sends true above ₹10,000 / flagged customer and routes to finance', async () => {
@@ -111,7 +111,7 @@ describe('Scan & inspect page', () => {
 
       expect(spy.mock.calls[0][1]).toMatchObject({ decision: 'accept', requiresFinanceApproval: true })
       expect(await screen.findByRole('status')).toHaveTextContent('sent to the finance queue')
-      expect(getMockLedger()).toHaveLength(0)
+      expect(getNewPayments()).toHaveLength(0)
     })
 
     it('sends true for a flagged customer even under ₹10,000', async () => {
@@ -137,7 +137,7 @@ describe('Scan & inspect page', () => {
     await user.keyboard('aa')
     await screen.findByRole('status')
     expect(spy).toHaveBeenCalledTimes(1)
-    expect(getMockLedger()).toHaveLength(1)
+    expect(getNewPayments()).toHaveLength(1)
   })
 
   it('reuses the same idempotency key when retrying after a timeout', async () => {
@@ -154,7 +154,7 @@ describe('Scan & inspect page', () => {
     await user.click(button(/^Accept/))
     expect(await screen.findByText(/Refund of ₹949.50 paid/)).toBeInTheDocument()
     expect(spy.mock.calls[0][2]).toBe(spy.mock.calls[1][2])
-    expect(getMockLedger()).toHaveLength(1)
+    expect(getNewPayments()).toHaveLength(1)
   })
 
   it('uses a new key after the server definitively refuses', async () => {
@@ -232,7 +232,7 @@ describe('Scan & inspect page', () => {
       )
       expect(await screen.findByRole('status')).toHaveTextContent('RMA-2026-00702 rejected.')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(getMockLedger()).toHaveLength(0)
+      expect(getNewPayments()).toHaveLength(0)
     })
 
     it('Cancel closes without sending', async () => {
@@ -289,7 +289,7 @@ describe('Scan & inspect page', () => {
         expect.any(String),
       )
       expect(await screen.findByRole('status')).toHaveTextContent('Partial refund of ₹3,000 paid.')
-      expect(getMockLedger()[0].amountPaise).toBe(300_000)
+      expect(getNewPayments()[0].amountPaise).toBe(300_000)
     })
 
     it('validates the amount and reason', async () => {

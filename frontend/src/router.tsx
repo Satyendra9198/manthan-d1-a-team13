@@ -4,9 +4,9 @@ import { CustomerLayout } from '@/components/layout/customer-layout'
 import { DEFAULT_PATH } from '@/config/navigation'
 import { AuditLogPage } from '@/pages/audit-log-page'
 import { DashboardPage } from '@/pages/dashboard-page'
-import { FinanceQueuePage } from '@/pages/finance-queue-page'
+import { FinanceQueuePage } from '@/pages/finance/finance-queue/finance-queue-page'
 import { ReturnStatusPage } from '@/pages/customer/return-status/return-status-page'
-import { RefundsLedgerPage } from '@/pages/refunds-ledger-page'
+import { RefundsLedgerPage } from '@/pages/finance/refunds-ledger/refunds-ledger-page'
 import { ScanInspectPage } from '@/pages/agent/scan-inspect/scan-inspect-page'
 
 export const routes: RouteObject[] = [

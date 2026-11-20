@@ -29,17 +29,18 @@ describe('App layout & navigation', () => {
   })
 
   it.each([
-    ['Finance queue', '/finance'],
-    ['Refunds & ledger', '/refunds'],
-    ['Dashboard', '/dashboard'],
-    ['Audit log', '/audit'],
-  ])('clicking %s opens %s', async (label, path) => {
+    ['Finance queue', '/finance', 'Refunds awaiting approval', 'Finance reviewer'],
+    ['Refunds & ledger', '/refunds', 'Refunds and ledger', 'Finance reviewer'],
+    ['Dashboard', '/dashboard', 'Dashboard', 'Operations manager'],
+    ['Audit log', '/audit', 'Audit log', 'Operations manager'],
+  ])('clicking %s opens %s', async (label, path, heading, persona) => {
     const user = userEvent.setup()
     const router = renderAt('/scan')
     await user.click(screen.getByRole('link', { name: label }))
     expect(router.state.location.pathname).toBe(path)
-    expect(screen.getByRole('heading', { level: 1, name: label })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText(persona)).toBeInTheDocument()
   })
 
   it('redirects unknown URLs to the default screen', () => {

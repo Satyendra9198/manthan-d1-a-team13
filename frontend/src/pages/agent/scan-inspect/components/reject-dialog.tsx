@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
-import type { RejectReason, ReturnDetails } from '@/api/types'
+import type { AgentRejectReason, ReturnDetails } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -47,7 +47,7 @@ function RejectForm({
   onClose,
 }: Omit<Props, 'open'>) {
   const id = useId()
-  const [reason, setReason] = useState<RejectReason | null>(null)
+  const [reason, setReason] = useState<AgentRejectReason | null>(null)
   const [notes, setNotes] = useState(defaultNotes)
   const [errors, setErrors] = useState<{ reason?: string; notes?: string }>({})
 
@@ -78,7 +78,7 @@ function RejectForm({
         <RadioGroup
           value={reason ?? ''}
           onValueChange={(v) => {
-            setReason(v as RejectReason)
+            setReason(v as AgentRejectReason)
             setErrors((er) => ({ ...er, reason: undefined }))
           }}
           aria-labelledby={`${id}-reason`}

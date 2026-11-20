@@ -48,3 +48,15 @@ const dateOnly = new Intl.DateTimeFormat('en-IN', {
 export const formatDateTime = (iso: string) => dateTime.format(new Date(iso))
 /** ISO → "20 Nov 2026" (IST) */
 export const formatDate = (iso: string) => dateOnly.format(new Date(iso))
+
+const shortDateTime = new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: IST,
+})
+
+/** ISO → "20 Nov, 15:32" (IST) */
+export const formatShortDateTime = (iso: string) => shortDateTime.format(new Date(iso))

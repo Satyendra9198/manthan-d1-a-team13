@@ -101,3 +101,44 @@ Error codes are listed under `InspectionErrorCode` in `types.ts`.
 - `inspection`, `rejection` and `refund` fill in the explanation text, such as "Why ₹949.50 and not ₹1,899?", the rejection reason, and the payment reference.
 - **Never** include internal data here: the customer-flag reason, audit entries, or agent names. The page deliberately doesn't tell the customer *why* a review is happening.
 - In production this endpoint must check the order email or a signed link. An RMA number alone can be guessed.
+
+## Finance approval
+
+A return lands in the queue when inspection set `requiresFinanceApproval: true`, meaning the refund is above ₹10,000 or the customer is flagged. When the server queues it, it assigns a **refund key** (`rr-refund-88214`). That makes this "one refund per return" idempotency: the key belongs to the refund, not to a click.
+
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/finance/queue` | – | `FinanceQueueItem[]`, oldest first |
+| POST | `/finance/refunds/:returnId/approve` | header `Idempotency-Key: <refundKey>` | `FinanceDecisionResponse` (`outcome: "paid"`) |
+| POST | `/finance/refunds/:returnId/decline` | `DeclineRefundRequest` + header `Idempotency-Key: <refundKey>` | `FinanceDecisionResponse` (`outcome: "declined"`) |
+
+Rules the server must enforce:
+- **Retries pay once:** an approve repeated with the same key, whether a double click, a retry after a timeout, or two requests at the same time, returns the original response and pays only once. The ledger also holds at most one refund per return.
+- **Wrong keys are refused:**
+  - A key that doesn't belong to the return → 422 `IDEMPOTENCY_KEY_MISMATCH`.
+  - Approving after declining, or the other way round → 422 `IDEMPOTENCY_KEY_REUSED`.
+- **Only waiting returns:** a return that is no longer waiting → 409 `NOT_AWAITING_APPROVAL`. The screen removes that row and reloads the queue.
+- **Status and audit:**
+  - Approving moves the return from `inspected` to `refunded` (audit actor `finance_reviewer`) and adds a ledger entry.
+  - Declining moves it from `inspected` to `rejected`, with reason `declined_after_review`. The note is shown to the customer.
+
+## Refunds, gateway and ledger
+
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/refunds` | – | `RefundRecord[]`, newest first |
+| GET | `/ledger` | – | `LedgerResponse`: entries (newest first), totals and `balanced` |
+| POST | `/refunds/:refundId/retry` | header `Idempotency-Key: <refund key>` | `RefundRecord` |
+
+- **One refund per return.** Each return gets exactly one refund record, and its key (`rr-refund-…`) is created along with it. Every gateway attempt, automatic retry and manual retry uses that same key, and the gateway charges each key at most once.
+- **Automatic retries.** The server makes 1 attempt plus 3 automatic retries. If all of them time out, the refund is `failed`: nothing was charged, there are no ledger rows, and the return stays `inspected`. Finance retries it from the Refunds & ledger screen.
+- **Double-entry ledger, insert-only.** Rows are posted only after the gateway confirms the payment, and are never updated or deleted. A correction would be a new reversing journal.
+  - Gateway refund: debit `returns_expense`, credit `gateway_clearing` (type `REFUND`).
+  - Store credit: debit `returns_expense`, credit `store_credit_liability` (type `STORE_CREDIT`), with no gateway call.
+- **Declined refunds.** When finance declines, the refund record becomes `cancelled` and is never posted.
+- **Retry errors.**
+  - Retrying with another refund's key → 422 `IDEMPOTENCY_KEY_MISMATCH`.
+  - Retrying a refund that isn't failed → 409 `NOT_RETRYABLE`.
+  - Retrying a refund that already succeeded returns the existing result and doesn't charge again.
+
+To test failures (for example the SRE "break the gateway" exercise), call `setMockGatewayMode('timeout')` from `mocks/gateway.mock.ts`.

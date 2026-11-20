@@ -46,7 +46,9 @@ export function decisionMessage(rma: string, res: InspectionDecisionResponse): s
   const partial = res.decision === 'partial_accept' ? 'Partial refund' : 'Refund'
   switch (res.outcome) {
     case 'refund_initiated':
-      return `${rma} saved. ${partial} of ${amount} paid.`
+      return res.status === 'refunded'
+        ? `${rma} saved. ${partial} of ${amount} paid.`
+        : `${rma} saved. ${partial} of ${amount} approved, but the payment gateway failed. Finance will retry it.`
     case 'sent_to_finance':
       return `${rma} saved. ${partial} of ${amount} sent to the finance queue for approval.`
     case 'rejected':

@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router'
-import { NAV_ITEMS } from '@/config/navigation'
+import { NavLink, useLocation } from 'react-router'
+import { NAV_ITEMS, personaForPath } from '@/config/navigation'
 import { cn } from '@/lib/utils'
 
 type SidebarContentProps = {
@@ -10,7 +10,9 @@ type SidebarContentProps = {
 }
 
 /** Brand, nav links and signed-in footer. Shared by the desktop sidebar and the mobile menu. */
-export function SidebarContent({ userLabel = 'Warehouse agent', onNavigate }: SidebarContentProps) {
+export function SidebarContent({ userLabel, onNavigate }: SidebarContentProps) {
+  const { pathname } = useLocation()
+  const signedInAs = userLabel ?? personaForPath(pathname)
   return (
     <div className="flex h-full flex-col px-4 py-6">
       <div className="px-1 text-[17px] font-semibold tracking-tight">ReturnRight</div>
@@ -40,7 +42,7 @@ export function SidebarContent({ userLabel = 'Warehouse agent', onNavigate }: Si
 
       <div className="mt-auto px-1">
         <p className="text-xs text-muted-foreground">Signed in as</p>
-        <p className="mt-1 text-sm font-medium">{userLabel}</p>
+        <p className="mt-1 text-sm font-medium">{signedInAs}</p>
       </div>
     </div>
   )

@@ -3,9 +3,9 @@
  * Money is always in paise (integer minor units): ₹1,899 → 189900.
  * Business rules live in src/domain/returns. The backend must enforce the same rules.
  */
-import type { Grade, ProductCategory, RejectReason, ReturnStatus } from '@/domain/returns'
+import type { AgentRejectReason, Grade, ProductCategory, RejectReason, ReturnStatus } from '@/domain/returns'
 
-export type { Grade, ProductCategory, RejectReason, ReturnStatus }
+export type { AgentRejectReason, Grade, ProductCategory, RejectReason, ReturnStatus }
 
 export type RefundMethod = 'original_payment' | 'store_credit'
 
@@ -100,7 +100,7 @@ export type RejectRequest = {
   decision: 'reject'
   grade: Grade | null
   /** Label is shown to the customer on their status page. */
-  reason: RejectReason
+  reason: AgentRejectReason
   /** Required when reason is "other". */
   notes: string
 }
@@ -174,4 +174,96 @@ export type ReturnTracking = {
     /** Gateway reference, e.g. "GW-7781-2026". */
     reference: string
   } | null
+}
+
+/** GET /finance/queue: refunds held by requiresFinanceApproval, oldest first. */
+export type FinanceQueueItem = {
+  returnId: string
+  rmaNumber: string
+  customer: {
+    name: string
+    flaggedForReview: boolean
+    returnsLast30Days: number
+  }
+  item: { name: string; pricePaise: number }
+  decision: 'accept' | 'partial_accept'
+  grade: Grade | null
+  /** Amount to pay after grading / partial accept. */
+  refundAmountPaise: number
+  refundMethod: RefundMethod
+  /** e.g. "UPI", "Visa", "Store credit". */
+  payoutMethod: string
+  inspectedBy: string
+  /** When it entered the queue (ISO). */
+  inspectedAt: string
+  /**
+   * The refund's idempotency key, assigned when it was queued. Send it as `Idempotency-Key`
+   * on approve / decline: clicking twice or retrying after a timeout can never pay twice.
+   */
+  refundKey: string
+}
+
+/** POST /finance/refunds/:returnId/decline */
+export type DeclineRefundRequest = {
+  /** Shown to the customer on their status page. */
+  note: string
+}
+
+/** Response for approve (POST /finance/refunds/:returnId/approve) and decline. */
+export type FinanceDecisionResponse = {
+  returnId: string
+  /** payment_failed: approved, but the gateway failed after all retries (see Refunds & ledger). */
+  outcome: 'paid' | 'payment_failed' | 'declined'
+  status: ReturnStatus
+  refund: { amountPaise: number; reference: string; paidAt: string } | null
+  decidedAt: string
+}
+
+export type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled'
+
+/** GET /refunds: one row per refund (at most one per return). Newest first. */
+export type RefundRecord = {
+  refundId: string
+  returnId: string
+  rmaNumber: string
+  itemName: string
+  amountPaise: number
+  /** "UPI", "Card" or "Store credit". */
+  method: string
+  /**
+   * pending: waiting for finance approval or payment · succeeded: paid and posted to the ledger ·
+   * failed: gateway failed on every attempt (nothing charged; retry with the same key) ·
+   * cancelled: finance declined it.
+   */
+  status: RefundStatus
+  /** Gateway attempts so far (1 + up to 3 automatic retries per run). */
+  attempts: number
+  /** Assigned when the refund is created; every attempt and retry reuses it. */
+  idempotencyKey: string
+  /** Gateway reference once paid. */
+  reference: string | null
+  lastError: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type LedgerAccount = 'returns_expense' | 'gateway_clearing' | 'store_credit_liability'
+
+/** One line of a double-entry journal. Insert-only: never updated or deleted. */
+export type LedgerEntry = {
+  journalId: string
+  rmaNumber: string
+  account: LedgerAccount
+  debitPaise: number
+  creditPaise: number
+  type: 'REFUND' | 'STORE_CREDIT'
+  postedAt: string
+}
+
+/** GET /ledger */
+export type LedgerResponse = {
+  /** Newest first. */
+  entries: LedgerEntry[]
+  totals: { debitPaise: number; creditPaise: number }
+  balanced: boolean
 }

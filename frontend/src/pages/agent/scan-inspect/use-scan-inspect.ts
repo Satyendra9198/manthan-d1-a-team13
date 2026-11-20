@@ -6,7 +6,7 @@ import type {
   Grade,
   InspectionConfig,
   InspectionDecisionRequest,
-  RejectReason,
+  AgentRejectReason,
   ReturnDetails,
 } from '@/api/types'
 import { refundForGrade, requiresFinanceApproval } from '@/domain/returns'
@@ -23,7 +23,7 @@ type Result = { kind: 'success' | 'error'; message: string } | null
 export type DialogKind = 'partial_accept' | 'reject'
 
 export type PartialAcceptInput = { refundAmountPaise: number; reason: string; notes: string }
-export type RejectInput = { reason: RejectReason; notes: string }
+export type RejectInput = { reason: AgentRejectReason; notes: string }
 
 export type ScanInspectInitial = {
   config?: InspectionConfig
