@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * A customer's return (RMA). Status lives here, not on the items (assumption A-03). The status is
@@ -89,6 +90,7 @@ public class ReturnRequest {
 
   @OneToMany(mappedBy = "returnRequest", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("changedAt ASC")
+  @BatchSize(size = 50)
   private List<ReturnStatusChange> statusHistory = new ArrayList<>();
 
   protected ReturnRequest() {}

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 /** One order line on a return, with the customer's reason and photos. */
 @Entity
@@ -63,6 +64,7 @@ public class ReturnItem {
   private String inspectionNote;
 
   @OneToMany(mappedBy = "returnItem", cascade = CascadeType.ALL, orphanRemoval = true)
+  @BatchSize(size = 50)
   private List<ReturnPhoto> photos = new ArrayList<>();
 
   protected ReturnItem() {}
