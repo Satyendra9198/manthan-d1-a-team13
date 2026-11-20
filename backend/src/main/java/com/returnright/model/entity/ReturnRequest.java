@@ -1,7 +1,9 @@
 package com.returnright.model.entity;
 
 import com.returnright.model.enums.RefundMethod;
+import com.returnright.model.enums.RejectionReason;
 import com.returnright.model.enums.ReturnStatus;
+import com.returnright.model.enums.Role;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
@@ -22,7 +25,8 @@ import java.util.UUID;
 
 /**
  * A customer's return (RMA). Status lives here, not on the items (assumption A-03). The status is
- * only ever changed with a target state the state machine has produced.
+ * only ever changed with a target state the state machine has produced, and every change is kept in
+ * the status history.
  */
 @Entity
 @Table(name = "return_request")
@@ -59,6 +63,23 @@ public class ReturnRequest {
   @Column(name = "approved_at")
   private Instant approvedAt;
 
+  @Column(name = "inspected_at")
+  private Instant inspectedAt;
+
+  @Column(name = "inspected_by")
+  private UUID inspectedBy;
+
+  /** Grade-adjusted refund decided at inspection (A-06); {@code null} before inspection. */
+  @Column(name = "refund_amount_paise")
+  private Long refundAmountPaise;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "rejection_reason")
+  private RejectionReason rejectionReason;
+
+  @Column(name = "rejection_note")
+  private String rejectionNote;
+
   @Version
   @Column(name = "version", nullable = false)
   private long version;
@@ -66,9 +87,13 @@ public class ReturnRequest {
   @OneToMany(mappedBy = "returnRequest", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ReturnItem> items = new ArrayList<>();
 
+  @OneToMany(mappedBy = "returnRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderBy("changedAt ASC")
+  private List<ReturnStatusChange> statusHistory = new ArrayList<>();
+
   protected ReturnRequest() {}
 
-  /** A new return in {@code REQUESTED}. */
+  /** A new return in {@code REQUESTED}, created by the customer. */
   public ReturnRequest(
       UUID id,
       String rmaNumber,
@@ -84,18 +109,33 @@ public class ReturnRequest {
     this.refundMethod = refundMethod;
     this.flaggedForReview = flaggedForReview;
     this.createdAt = createdAt;
+    statusHistory.add(
+        new ReturnStatusChange(this, ReturnStatus.REQUESTED, createdAt, Role.CUSTOMER, null));
   }
 
   /**
-   * Moves to a state the state machine has already validated.
+   * Moves to a state the state machine has already validated and records it in the history.
    *
-   * @param at when the transition happened
+   * @param actorId the staff member, or {@code null} for the customer and the system
    */
-  public void moveTo(ReturnStatus next, Instant at) {
+  public void moveTo(ReturnStatus next, Instant at, Role actorRole, UUID actorId) {
     this.status = next;
     if (next == ReturnStatus.APPROVED) {
       this.approvedAt = at;
     }
+    statusHistory.add(new ReturnStatusChange(this, next, at, actorRole, actorId));
+  }
+
+  /** Records the warehouse's verdict; the refund amount is 0 when nothing was accepted. */
+  public void recordInspection(UUID agentId, Instant at, long refundAmountPaise) {
+    this.inspectedBy = agentId;
+    this.inspectedAt = at;
+    this.refundAmountPaise = refundAmountPaise;
+  }
+
+  public void recordRejection(RejectionReason reason, String note) {
+    this.rejectionReason = reason;
+    this.rejectionNote = note;
   }
 
   public void addItem(ReturnItem item) {
@@ -139,7 +179,31 @@ public class ReturnRequest {
     return approvedAt;
   }
 
+  public Instant getInspectedAt() {
+    return inspectedAt;
+  }
+
+  public UUID getInspectedBy() {
+    return inspectedBy;
+  }
+
+  public Long getRefundAmountPaise() {
+    return refundAmountPaise;
+  }
+
+  public RejectionReason getRejectionReason() {
+    return rejectionReason;
+  }
+
+  public String getRejectionNote() {
+    return rejectionNote;
+  }
+
   public List<ReturnItem> getItems() {
     return Collections.unmodifiableList(items);
+  }
+
+  public List<ReturnStatusChange> getStatusHistory() {
+    return Collections.unmodifiableList(statusHistory);
   }
 }

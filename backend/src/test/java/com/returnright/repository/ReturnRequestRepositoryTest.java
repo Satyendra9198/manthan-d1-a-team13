@@ -13,6 +13,7 @@ import com.returnright.model.enums.ProductCategory;
 import com.returnright.model.enums.RefundMethod;
 import com.returnright.model.enums.ReturnReason;
 import com.returnright.model.enums.ReturnStatus;
+import com.returnright.model.enums.Role;
 import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.Instant;
@@ -125,7 +126,7 @@ class ReturnRequestRepositoryTest {
             RefundMethod.STORE_CREDIT,
             false,
             createdAt);
-    returnRequest.moveTo(status, createdAt);
+    returnRequest.moveTo(status, createdAt, Role.SYSTEM, null);
     ReturnItem returnItem =
         new ReturnItem(
             UUID.randomUUID(), orderItem, quantity, ReturnReason.DAMAGED_ON_ARRIVAL, null);

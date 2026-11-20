@@ -98,7 +98,9 @@ public class ReturnSubmissionServiceImpl implements ReturnSubmissionService {
       returnRequest.moveTo(
           returnStateMachineService.transition(
               ReturnStatus.REQUESTED, ReturnEvent.APPROVE, Role.SYSTEM),
-          now);
+          now,
+          Role.SYSTEM,
+          null);
     }
 
     Map<UUID, OrderItem> orderItemsById =

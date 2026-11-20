@@ -1,5 +1,7 @@
 package com.returnright.model.entity;
 
+import com.returnright.model.enums.InspectionGrade;
+import com.returnright.model.enums.RejectionReason;
 import com.returnright.model.enums.ReturnReason;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -44,6 +46,22 @@ public class ReturnItem {
   @Column(name = "customer_comment", updatable = false)
   private String customerComment;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "grade")
+  private InspectionGrade grade;
+
+  /** Units the warehouse accepted (A-05); {@code null} before inspection. */
+  @Column(name = "accepted_quantity")
+  private Integer acceptedQuantity;
+
+  /** Why some or all units were not accepted; {@code null} when all were. */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "rejection_reason")
+  private RejectionReason rejectionReason;
+
+  @Column(name = "inspection_note")
+  private String inspectionNote;
+
   @OneToMany(mappedBy = "returnItem", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ReturnPhoto> photos = new ArrayList<>();
 
@@ -60,6 +78,18 @@ public class ReturnItem {
 
   void attachTo(ReturnRequest returnRequest) {
     this.returnRequest = returnRequest;
+  }
+
+  /** Records the warehouse result for this line. */
+  public void recordInspection(
+      InspectionGrade grade,
+      int acceptedQuantity,
+      RejectionReason rejectionReason,
+      String inspectionNote) {
+    this.grade = grade;
+    this.acceptedQuantity = acceptedQuantity;
+    this.rejectionReason = rejectionReason;
+    this.inspectionNote = inspectionNote;
   }
 
   public void addPhoto(ReturnPhoto photo) {
@@ -89,6 +119,22 @@ public class ReturnItem {
 
   public String getCustomerComment() {
     return customerComment;
+  }
+
+  public InspectionGrade getGrade() {
+    return grade;
+  }
+
+  public Integer getAcceptedQuantity() {
+    return acceptedQuantity;
+  }
+
+  public RejectionReason getRejectionReason() {
+    return rejectionReason;
+  }
+
+  public String getInspectionNote() {
+    return inspectionNote;
   }
 
   public List<ReturnPhoto> getPhotos() {
