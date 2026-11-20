@@ -45,6 +45,7 @@ public class ItemSelectionServiceImpl implements ItemSelectionService {
         customerOrderReader.findOwnedOrder(request.orderNumber(), request.email());
     Map<UUID, OrderItem> orderItemsById =
         order.getItems().stream().collect(Collectors.toMap(OrderItem::getId, Function.identity()));
+    Map<UUID, Integer> alreadyReturned = customerOrderReader.quantitiesAlreadyReturned(order);
 
     List<String> problems = new ArrayList<>();
     List<SelectedItemResponse> acceptedLines = new ArrayList<>();
@@ -57,7 +58,8 @@ public class ItemSelectionServiceImpl implements ItemSelectionService {
       } else if (!seenItemIds.add(selected.itemId())) {
         problems.add(selected.itemId() + ": This item was selected more than once.");
       } else {
-        EligibilityResult eligibility = evaluate(item, selected.quantity());
+        EligibilityResult eligibility =
+            evaluate(item, selected.quantity(), alreadyReturned.getOrDefault(item.getId(), 0));
         if (eligibility.eligible()) {
           acceptedLines.add(toSelectedItem(item, selected.quantity(), eligibility));
         } else {
@@ -83,13 +85,13 @@ public class ItemSelectionServiceImpl implements ItemSelectionService {
         acceptedLines);
   }
 
-  private EligibilityResult evaluate(OrderItem item, int quantityRequested) {
+  private EligibilityResult evaluate(OrderItem item, int quantityRequested, int alreadyReturned) {
     return eligibilityService.evaluate(
         new ItemEligibilityInput(
             item.getCategory(),
             item.getDeliveredAt(),
             item.getQuantity(),
-            customerOrderReader.quantityAlreadyReturned(item),
+            alreadyReturned,
             quantityRequested));
   }
 

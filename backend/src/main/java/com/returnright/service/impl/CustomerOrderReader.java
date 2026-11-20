@@ -1,10 +1,14 @@
 package com.returnright.service.impl;
 
 import com.returnright.exception.OrderNotFoundException;
+import com.returnright.model.domain.ReturnedQuantity;
 import com.returnright.model.entity.CustomerOrder;
-import com.returnright.model.entity.OrderItem;
 import com.returnright.repository.CustomerOrderRepository;
+import com.returnright.repository.ReturnItemRepository;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,9 +19,12 @@ import org.springframework.stereotype.Component;
 public class CustomerOrderReader {
 
   private final CustomerOrderRepository customerOrderRepository;
+  private final ReturnItemRepository returnItemRepository;
 
-  public CustomerOrderReader(CustomerOrderRepository customerOrderRepository) {
+  public CustomerOrderReader(
+      CustomerOrderRepository customerOrderRepository, ReturnItemRepository returnItemRepository) {
     this.customerOrderRepository = customerOrderRepository;
+    this.returnItemRepository = returnItemRepository;
   }
 
   /**
@@ -33,10 +40,20 @@ public class CustomerOrderReader {
   }
 
   /**
-   * Units of this line already on non-cancelled returns. Always 0 until return requests are
-   * persisted; the create-return API will replace this with a query on its return lines.
+   * Like {@link #findOwnedOrder} but also locks the order row until the transaction ends. Must be
+   * called inside a transaction.
    */
-  public int quantityAlreadyReturned(OrderItem item) {
-    return 0;
+  public CustomerOrder findOwnedOrderForUpdate(String orderNumber, String email) {
+    CustomerOrder order = findOwnedOrder(orderNumber, email);
+    customerOrderRepository.lockById(order.getId());
+    return order;
+  }
+
+  /** Units per order item already on non-cancelled returns; items with none are absent. */
+  public Map<UUID, Integer> quantitiesAlreadyReturned(CustomerOrder order) {
+    return returnItemRepository.findReturnedQuantities(order.getId()).stream()
+        .collect(
+            Collectors.toMap(
+                ReturnedQuantity::orderItemId, returned -> Math.toIntExact(returned.quantity())));
   }
 }

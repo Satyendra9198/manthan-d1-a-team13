@@ -10,6 +10,8 @@ import com.returnright.model.entity.OrderItem;
 import com.returnright.service.EligibilityService;
 import com.returnright.service.OrderLookupService;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +34,18 @@ public class OrderLookupServiceImpl implements OrderLookupService {
     CustomerOrder order =
         customerOrderReader.findOwnedOrder(request.orderNumber(), request.email());
 
-    List<OrderItemResponse> items = order.getItems().stream().map(this::toItemResponse).toList();
+    Map<UUID, Integer> alreadyReturned = customerOrderReader.quantitiesAlreadyReturned(order);
+    List<OrderItemResponse> items =
+        order.getItems().stream()
+            .map(item -> toItemResponse(item, alreadyReturned.getOrDefault(item.getId(), 0)))
+            .toList();
     int returnableItemCount = (int) items.stream().filter(OrderItemResponse::returnable).count();
 
     return new OrderLookupResponse(
         order.getId(), order.getOrderNumber(), order.getPlacedAt(), returnableItemCount, items);
   }
 
-  private OrderItemResponse toItemResponse(OrderItem item) {
-    int alreadyReturned = customerOrderReader.quantityAlreadyReturned(item);
+  private OrderItemResponse toItemResponse(OrderItem item, int alreadyReturned) {
     int remaining = item.getQuantity() - alreadyReturned;
     EligibilityResult eligibility =
         eligibilityService.evaluate(

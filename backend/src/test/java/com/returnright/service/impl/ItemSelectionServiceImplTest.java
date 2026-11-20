@@ -15,6 +15,7 @@ import com.returnright.model.entity.CustomerOrder;
 import com.returnright.model.entity.OrderItem;
 import com.returnright.model.enums.ProductCategory;
 import com.returnright.repository.CustomerOrderRepository;
+import com.returnright.repository.ReturnItemRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,9 +41,11 @@ class ItemSelectionServiceImplTest {
   private final CustomerOrderRepository customerOrderRepository =
       mock(CustomerOrderRepository.class);
 
+  private final ReturnItemRepository returnItemRepository = mock(ReturnItemRepository.class);
+
   private final ItemSelectionServiceImpl service =
       new ItemSelectionServiceImpl(
-          new CustomerOrderReader(customerOrderRepository),
+          new CustomerOrderReader(customerOrderRepository, returnItemRepository),
           new EligibilityServiceImpl(Clock.fixed(NOW, ZoneOffset.UTC)));
 
   /** Two linen shirts at ₹1,899, delivered 5 days ago. */
