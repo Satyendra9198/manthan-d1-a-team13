@@ -3,6 +3,7 @@
 A retail returns and refunds portal (hackathon Track A). It is a modular-monolith API plus a mock payment gateway and a notifier microservice, with a React frontend.
 Design source of truth: `docs/architecture/01-architecture-part1.md`, `docs/architecture/02-architecture-part2.md`, `docs/adr/` (**ADR-002 maps the design onto Java/Spring**), `docs/api/contract.md` (binding API contract).
 Assumptions are tagged `[A-nn]`, transitions `T-nn`, failure modes `F-nn` and DB rules `BR-nn`. Cite these tags in code comments, tests and commits.
+**Current status, what is left, and known traps: read `docs/HANDOFF.md` before starting work.**
 
 ## Stack (fixed)
 - **Backend `backend/`**: Java 21, Spring Boot 4.1.3 (Web MVC, Data JPA/Hibernate 7, Security + oauth2-resource-server JWT, Validation, Actuator + Micrometer Prometheus, Data Redis, Kafka), Flyway, PostgreSQL 18, ZXing, Datafaker, springdoc-openapi. Build with `./mvnw` (Maven wrapper).
