@@ -1,6 +1,5 @@
 package com.returnright.service.impl;
 
-import com.returnright.exception.OrderNotFoundException;
 import com.returnright.model.domain.EligibilityResult;
 import com.returnright.model.domain.ItemEligibilityInput;
 import com.returnright.model.dto.request.OrderLookupRequest;
@@ -8,11 +7,9 @@ import com.returnright.model.dto.response.OrderItemResponse;
 import com.returnright.model.dto.response.OrderLookupResponse;
 import com.returnright.model.entity.CustomerOrder;
 import com.returnright.model.entity.OrderItem;
-import com.returnright.repository.CustomerOrderRepository;
 import com.returnright.service.EligibilityService;
 import com.returnright.service.OrderLookupService;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,25 +17,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderLookupServiceImpl implements OrderLookupService {
 
-  private final CustomerOrderRepository customerOrderRepository;
+  private final CustomerOrderReader customerOrderReader;
   private final EligibilityService eligibilityService;
 
   public OrderLookupServiceImpl(
-      CustomerOrderRepository customerOrderRepository, EligibilityService eligibilityService) {
-    this.customerOrderRepository = customerOrderRepository;
+      CustomerOrderReader customerOrderReader, EligibilityService eligibilityService) {
+    this.customerOrderReader = customerOrderReader;
     this.eligibilityService = eligibilityService;
   }
 
   @Override
   @Transactional(readOnly = true)
   public OrderLookupResponse findOrder(OrderLookupRequest request) {
-    String orderNumber = request.orderNumber().trim().toUpperCase(Locale.ROOT);
-    String email = request.email().trim().toLowerCase(Locale.ROOT);
-
     CustomerOrder order =
-        customerOrderRepository
-            .findByOrderNumberAndCustomerEmail(orderNumber, email)
-            .orElseThrow(OrderNotFoundException::new);
+        customerOrderReader.findOwnedOrder(request.orderNumber(), request.email());
 
     List<OrderItemResponse> items = order.getItems().stream().map(this::toItemResponse).toList();
     int returnableItemCount = (int) items.stream().filter(OrderItemResponse::returnable).count();
@@ -48,7 +40,7 @@ public class OrderLookupServiceImpl implements OrderLookupService {
   }
 
   private OrderItemResponse toItemResponse(OrderItem item) {
-    int alreadyReturned = quantityAlreadyReturned(item);
+    int alreadyReturned = customerOrderReader.quantityAlreadyReturned(item);
     int remaining = item.getQuantity() - alreadyReturned;
     EligibilityResult eligibility =
         eligibilityService.evaluate(
@@ -73,13 +65,5 @@ public class OrderLookupServiceImpl implements OrderLookupService {
         eligibility.reason(),
         eligibility.message(),
         eligibility.lastReturnDate());
-  }
-
-  /**
-   * Units of this line already on non-cancelled returns. Always 0 until return requests are
-   * persisted; the create-return API will replace this with a query on its return lines.
-   */
-  private int quantityAlreadyReturned(OrderItem item) {
-    return 0;
   }
 }

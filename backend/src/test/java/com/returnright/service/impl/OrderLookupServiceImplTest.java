@@ -40,7 +40,8 @@ class OrderLookupServiceImplTest {
 
   private final OrderLookupServiceImpl service =
       new OrderLookupServiceImpl(
-          customerOrderRepository, new EligibilityServiceImpl(Clock.fixed(NOW, ZoneOffset.UTC)));
+          new CustomerOrderReader(customerOrderRepository),
+          new EligibilityServiceImpl(Clock.fixed(NOW, ZoneOffset.UTC)));
 
   @Test
   void matchingOrderNumberAndEmailReturnsTheOrderWithEveryLine() {
