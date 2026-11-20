@@ -1,13 +1,22 @@
 import { Navigate, type RouteObject } from 'react-router'
 import { AppLayout } from '@/components/layout/app-layout'
+import { CustomerLayout } from '@/components/layout/customer-layout'
 import { DEFAULT_PATH } from '@/config/navigation'
 import { AuditLogPage } from '@/pages/audit-log-page'
 import { DashboardPage } from '@/pages/dashboard-page'
 import { FinanceQueuePage } from '@/pages/finance-queue-page'
+import { ReturnStatusPage } from '@/pages/customer/return-status/return-status-page'
 import { RefundsLedgerPage } from '@/pages/refunds-ledger-page'
-import { ScanInspectPage } from '@/pages/scan-inspect-page'
+import { ScanInspectPage } from '@/pages/agent/scan-inspect/scan-inspect-page'
 
 export const routes: RouteObject[] = [
+  // Customer screens (no staff sidebar).
+  {
+    path: '/track',
+    element: <CustomerLayout />,
+    children: [{ path: ':rmaNumber', element: <ReturnStatusPage /> }],
+  },
+  // Staff screens.
   {
     path: '/',
     element: <AppLayout />,

@@ -17,7 +17,7 @@ describe('App layout & navigation', () => {
     expect(await screen.findByRole('heading', { name: 'Scan and inspect' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/scan')
     expect(screen.getByRole('link', { name: 'Scan & inspect' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByText('Today: 37 inspected')).toBeInTheDocument()
+    expect(await screen.findByText(/Today: \d+ inspected/)).toBeInTheDocument()
   })
 
   it('renders every sidebar item as a link', () => {
