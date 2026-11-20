@@ -164,7 +164,12 @@ class WarehouseReturnServiceImplTest {
     InspectionResultResponse result =
         inspect(
             new InspectedItemRequest(
-                shirts.getId(), InspectionGrade.A, 1, RejectionReason.USED_OR_WORN, "Stained"),
+                shirts.getId(),
+                InspectionGrade.A,
+                1,
+                RejectionReason.USED_OR_WORN,
+                "Stained",
+                null),
             accept(mugs, 1, InspectionGrade.A));
 
     assertThat(result.refundAmountPaise()).isEqualTo(189_900 + 124_900);
@@ -172,6 +177,78 @@ class WarehouseReturnServiceImplTest {
     assertThat(shirts.getRejectionReason()).isEqualTo(RejectionReason.USED_OR_WORN);
     assertThat(shirts.getInspectionNote()).isEqualTo("Stained");
     assertThat(mugs.getRejectionReason()).isNull();
+  }
+
+  @Test
+  void partialAcceptByAmountRefundsTheChosenAmount() {
+    InspectionResultResponse result =
+        inspect(
+            new InspectedItemRequest(
+                shirts.getId(),
+                InspectionGrade.B,
+                2,
+                RejectionReason.OTHER,
+                "Original box missing",
+                300_000L),
+            accept(mugs, 1, InspectionGrade.A));
+
+    assertThat(result.refundAmountPaise()).isEqualTo(300_000 + 124_900);
+    assertThat(shirts.getRefundOverridePaise()).isEqualTo(300_000);
+    assertThat(shirts.getRejectionReason()).isEqualTo(RejectionReason.OTHER);
+    assertThat(mugs.getRefundOverridePaise()).isNull();
+  }
+
+  @Test
+  void refundAmountAboveTheGradedRefundIsRefused() {
+    assertThatThrownBy(
+            () ->
+                inspect(
+                    new InspectedItemRequest(
+                        shirts.getId(),
+                        InspectionGrade.C,
+                        2,
+                        RejectionReason.USED_OR_WORN,
+                        null,
+                        200_000L),
+                    accept(mugs, 1, InspectionGrade.A)))
+        .isInstanceOfSatisfying(
+            InvalidInspectionException.class,
+            ex ->
+                assertThat(ex.getProblems())
+                    .containsExactly(
+                        shirts.getId() + ": The refund can be at most ₹1,899 for grade C."));
+  }
+
+  @Test
+  void refundAmountWithoutAReasonIsRefused() {
+    assertThatThrownBy(
+            () ->
+                inspect(
+                    new InspectedItemRequest(
+                        shirts.getId(), InspectionGrade.A, 2, null, null, 100_000L),
+                    accept(mugs, 1, InspectionGrade.A)))
+        .isInstanceOfSatisfying(
+            InvalidInspectionException.class,
+            ex ->
+                assertThat(ex.getProblems())
+                    .containsExactly(
+                        shirts.getId() + ": Choose why the item wasn't fully accepted."));
+  }
+
+  @Test
+  void refundAmountWithNothingAcceptedIsRefused() {
+    assertThatThrownBy(
+            () ->
+                inspect(
+                    new InspectedItemRequest(
+                        shirts.getId(), null, 0, RejectionReason.USED_OR_WORN, null, 100_000L),
+                    accept(mugs, 1, InspectionGrade.A)))
+        .isInstanceOfSatisfying(
+            InvalidInspectionException.class,
+            ex ->
+                assertThat(ex.getProblems())
+                    .containsExactly(
+                        shirts.getId() + ": A refund amount needs at least one accepted unit."));
   }
 
   @Test
@@ -203,9 +280,9 @@ class WarehouseReturnServiceImplTest {
     InspectionResultResponse result =
         inspect(
             new InspectedItemRequest(
-                shirts.getId(), null, 0, RejectionReason.MISSING_PARTS_OR_TAGS, "No tags"),
+                shirts.getId(), null, 0, RejectionReason.MISSING_PARTS_OR_TAGS, "No tags", null),
             new InspectedItemRequest(
-                mugs.getId(), null, 0, RejectionReason.MISSING_PARTS_OR_TAGS, null));
+                mugs.getId(), null, 0, RejectionReason.MISSING_PARTS_OR_TAGS, null, null));
 
     assertThat(result.status()).isEqualTo(ReturnStatus.REJECTED);
     assertThat(result.refundAmountPaise()).isZero();
@@ -220,8 +297,8 @@ class WarehouseReturnServiceImplTest {
     assertThatThrownBy(
             () ->
                 inspect(
-                    new InspectedItemRequest(shirts.getId(), null, 2, null, null),
-                    new InspectedItemRequest(strangerId, InspectionGrade.A, 1, null, null)))
+                    new InspectedItemRequest(shirts.getId(), null, 2, null, null, null),
+                    new InspectedItemRequest(strangerId, InspectionGrade.A, 1, null, null, null)))
         .isInstanceOfSatisfying(
             InvalidInspectionException.class,
             ex ->
@@ -238,13 +315,15 @@ class WarehouseReturnServiceImplTest {
     assertThatThrownBy(
             () ->
                 inspect(
-                    new InspectedItemRequest(shirts.getId(), InspectionGrade.A, 1, null, null),
+                    new InspectedItemRequest(
+                        shirts.getId(), InspectionGrade.A, 1, null, null, null),
                     accept(mugs, 1, InspectionGrade.A)))
         .isInstanceOfSatisfying(
             InvalidInspectionException.class,
             ex ->
                 assertThat(ex.getProblems())
-                    .containsExactly(shirts.getId() + ": Choose why some units weren't accepted."));
+                    .containsExactly(
+                        shirts.getId() + ": Choose why the item wasn't fully accepted."));
   }
 
   @Test
@@ -253,7 +332,7 @@ class WarehouseReturnServiceImplTest {
             () ->
                 inspect(
                     new InspectedItemRequest(
-                        shirts.getId(), InspectionGrade.A, 1, RejectionReason.OTHER, " "),
+                        shirts.getId(), InspectionGrade.A, 1, RejectionReason.OTHER, " ", null),
                     accept(mugs, 1, InspectionGrade.A)))
         .isInstanceOfSatisfying(
             InvalidInspectionException.class,
@@ -367,7 +446,7 @@ class WarehouseReturnServiceImplTest {
   }
 
   private static InspectedItemRequest accept(ReturnItem item, int quantity, InspectionGrade grade) {
-    return new InspectedItemRequest(item.getId(), grade, quantity, null, null);
+    return new InspectedItemRequest(item.getId(), grade, quantity, null, null, null);
   }
 
   private UUID attachPhoto(ReturnItem item) {

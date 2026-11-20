@@ -63,6 +63,13 @@ public class ReturnItem {
   @Column(name = "inspection_note")
   private String inspectionNote;
 
+  /**
+   * Amount the agent chose for a partial accept by amount; {@code null} when the refund is the
+   * graded amount (A-20).
+   */
+  @Column(name = "refund_override_paise")
+  private Long refundOverridePaise;
+
   @OneToMany(mappedBy = "returnItem", cascade = CascadeType.ALL, orphanRemoval = true)
   @BatchSize(size = 50)
   private List<ReturnPhoto> photos = new ArrayList<>();
@@ -88,10 +95,26 @@ public class ReturnItem {
       int acceptedQuantity,
       RejectionReason rejectionReason,
       String inspectionNote) {
+    recordInspection(grade, acceptedQuantity, rejectionReason, inspectionNote, null);
+  }
+
+  /**
+   * Records the warehouse result for this line, with a refund amount chosen by the agent.
+   *
+   * @param refundOverridePaise the refund for this line, already checked against the graded amount;
+   *     {@code null} to refund the graded amount
+   */
+  public void recordInspection(
+      InspectionGrade grade,
+      int acceptedQuantity,
+      RejectionReason rejectionReason,
+      String inspectionNote,
+      Long refundOverridePaise) {
     this.grade = grade;
     this.acceptedQuantity = acceptedQuantity;
     this.rejectionReason = rejectionReason;
     this.inspectionNote = inspectionNote;
+    this.refundOverridePaise = refundOverridePaise;
   }
 
   public void addPhoto(ReturnPhoto photo) {
@@ -137,6 +160,10 @@ public class ReturnItem {
 
   public String getInspectionNote() {
     return inspectionNote;
+  }
+
+  public Long getRefundOverridePaise() {
+    return refundOverridePaise;
   }
 
   public List<ReturnPhoto> getPhotos() {

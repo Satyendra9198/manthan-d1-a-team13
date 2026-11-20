@@ -188,26 +188,26 @@ public class WarehouseReturnServiceImpl implements WarehouseReturnService {
     requireEvent(returnRequest, ReturnEvent.COMPLETE_INSPECTION, agent);
     Map<UUID, InspectedItemRequest> verdicts = validate(returnRequest, request);
 
-    List<InspectedLine> lines = new ArrayList<>();
+    long refundPaise = 0;
+    int acceptedUnits = 0;
     for (ReturnItem item : returnRequest.getItems()) {
       InspectedItemRequest verdict = verdicts.get(item.getId());
-      boolean partial = verdict.acceptedQuantity() < item.getQuantity();
+      boolean partial =
+          verdict.acceptedQuantity() < item.getQuantity() || verdict.refundAmountPaise() != null;
       item.recordInspection(
           verdict.acceptedQuantity() == 0 ? null : verdict.grade(),
           verdict.acceptedQuantity(),
           partial ? verdict.rejectionReason() : null,
-          blankToNull(verdict.note()));
-      lines.add(
-          new InspectedLine(
-              item.getOrderItem().getUnitPricePaise(),
-              item.getQuantity(),
-              verdict.acceptedQuantity(),
-              verdict.grade() == null ? InspectionGrade.A : verdict.grade()));
+          blankToNull(verdict.note()),
+          verdict.refundAmountPaise());
+      refundPaise +=
+          verdict.refundAmountPaise() != null
+              ? verdict.refundAmountPaise()
+              : gradedRefund(item, verdict);
+      acceptedUnits += verdict.acceptedQuantity();
     }
 
     Instant now = clock.instant();
-    long refundPaise = refundCalculationService.totalRefundPaise(lines);
-    int acceptedUnits = lines.stream().mapToInt(InspectedLine::acceptedQuantity).sum();
     returnRequest.recordInspection(agent.id(), now, refundPaise);
 
     boolean financeApprovalRequired = false;
@@ -263,9 +263,12 @@ public class WarehouseReturnServiceImpl implements WarehouseReturnService {
       if (verdict.acceptedQuantity() > 0 && verdict.grade() == null) {
         problems.add(label + ": Choose a condition grade.");
       }
-      if (verdict.acceptedQuantity() < item.getQuantity()) {
+      if (verdict.refundAmountPaise() != null) {
+        checkRefundAmount(item, verdict, label, problems);
+      }
+      if (verdict.acceptedQuantity() < item.getQuantity() || verdict.refundAmountPaise() != null) {
         if (verdict.rejectionReason() == null) {
-          problems.add(label + ": Choose why some units weren't accepted.");
+          problems.add(label + ": Choose why the item wasn't fully accepted.");
         } else {
           checkReason(verdict.rejectionReason(), verdict.note(), label, problems);
         }
@@ -281,6 +284,34 @@ public class WarehouseReturnServiceImpl implements WarehouseReturnService {
     }
     return request.items().stream()
         .collect(Collectors.toMap(InspectedItemRequest::returnItemId, Function.identity()));
+  }
+
+  /** A partial accept by amount: at least one unit accepted, at most the graded refund (A-20). */
+  private void checkRefundAmount(
+      ReturnItem item, InspectedItemRequest verdict, String label, List<String> problems) {
+    if (verdict.acceptedQuantity() == 0) {
+      problems.add(label + ": A refund amount needs at least one accepted unit.");
+    } else if (verdict.grade() != null) {
+      long maximum = gradedRefund(item, verdict);
+      if (verdict.refundAmountPaise() > maximum) {
+        problems.add(
+            label
+                + ": The refund can be at most "
+                + Rupees.format(maximum)
+                + " for grade "
+                + verdict.grade()
+                + ".");
+      }
+    }
+  }
+
+  private long gradedRefund(ReturnItem item, InspectedItemRequest verdict) {
+    return refundCalculationService.lineRefundPaise(
+        new InspectedLine(
+            item.getOrderItem().getUnitPricePaise(),
+            item.getQuantity(),
+            verdict.acceptedQuantity(),
+            verdict.grade() == null ? InspectionGrade.A : verdict.grade()));
   }
 
   private static void checkReason(
