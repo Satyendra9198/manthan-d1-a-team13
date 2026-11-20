@@ -12,6 +12,8 @@ import java.util.UUID;
 /**
  * A return on the warehouse inspection screen.
  *
+ * @param customerFlagged the customer was held for review at request time (A-11)
+ * @param customerReturnsLast30Days non-cancelled requests in the rolling 30 days
  * @param receivedAt when the parcel was scanned in; {@code null} before that
  * @param allowedActions what the signed-in agent can do now, e.g. {@code RECEIVE} or {@code
  *     COMPLETE_INSPECTION}; drives which buttons are enabled
@@ -22,6 +24,8 @@ public record WarehouseReturnResponse(
     ReturnStatus status,
     String orderNumber,
     String customerName,
+    boolean customerFlagged,
+    int customerReturnsLast30Days,
     RefundMethod refundMethod,
     Instant createdAt,
     Instant receivedAt,

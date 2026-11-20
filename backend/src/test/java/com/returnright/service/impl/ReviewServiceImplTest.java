@@ -19,8 +19,11 @@ import com.returnright.model.dto.response.FlaggedReturnResponse;
 import com.returnright.model.dto.response.ReviewDecisionResponse;
 import com.returnright.model.entity.CustomerOrder;
 import com.returnright.model.entity.OrderItem;
+import com.returnright.model.entity.Refund;
 import com.returnright.model.entity.ReturnItem;
 import com.returnright.model.entity.ReturnRequest;
+import com.returnright.model.entity.StaffUser;
+import com.returnright.model.enums.InspectionGrade;
 import com.returnright.model.enums.ProductCategory;
 import com.returnright.model.enums.RefundMethod;
 import com.returnright.model.enums.RefundStatus;
@@ -28,7 +31,9 @@ import com.returnright.model.enums.RejectionReason;
 import com.returnright.model.enums.ReturnReason;
 import com.returnright.model.enums.ReturnStatus;
 import com.returnright.model.enums.Role;
+import com.returnright.repository.RefundRepository;
 import com.returnright.repository.ReturnRequestRepository;
+import com.returnright.repository.StaffUserRepository;
 import com.returnright.service.RefundPayoutService;
 import com.returnright.support.NoOpTransactionManager;
 import java.time.Clock;
@@ -54,6 +59,9 @@ class ReviewServiceImplTest {
   private final ReturnRequestRepository returnRequestRepository =
       mock(ReturnRequestRepository.class);
   private final RefundPayoutService refundPayoutService = mock(RefundPayoutService.class);
+  private final StaffUserRepository staffUserRepository = mock(StaffUserRepository.class);
+  private final RefundRepository refundRepository = mock(RefundRepository.class);
+  private static final UUID AGENT_ID = UUID.randomUUID();
 
   private ReviewServiceImpl service;
   private ReturnRequest returnRequest;
@@ -64,6 +72,8 @@ class ReviewServiceImplTest {
     service =
         new ReviewServiceImpl(
             returnRequestRepository,
+            staffUserRepository,
+            refundRepository,
             new ReturnTransitions(new ReturnStateMachineServiceImpl(), clock),
             refundPayoutService,
             NoOpTransactionManager.template(),
@@ -85,10 +95,26 @@ class ReviewServiceImplTest {
               return Optional.of(RefundStatus.SUCCEEDED);
             });
 
+    when(refundRepository.findByReturnId(returnRequest.getId()))
+        .thenReturn(
+            Optional.of(
+                new Refund(
+                    UUID.randomUUID(),
+                    returnRequest.getId(),
+                    5_499_900,
+                    RefundMethod.ORIGINAL_PAYMENT,
+                    "return-" + returnRequest.getId(),
+                    RefundStatus.SUCCEEDED,
+                    "MOCK-TXN-000001",
+                    null)));
+
     ReviewDecisionResponse response = service.approveRefund(RMA, FINANCE);
 
     assertThat(response.status()).isEqualTo(ReturnStatus.REFUNDED);
     assertThat(response.refundStatus()).isEqualTo(RefundStatus.SUCCEEDED);
+    assertThat(response.refundAmountPaise()).isEqualTo(5_499_900);
+    assertThat(response.refundReference()).isEqualTo("MOCK-TXN-000001");
+    assertThat(response.decidedAt()).isEqualTo(NOW);
     assertThat(returnRequest.getStatusHistory())
         .anySatisfy(
             change -> {
@@ -126,6 +152,33 @@ class ReviewServiceImplTest {
 
     assertThatThrownBy(() -> service.approveRefund(RMA, OPERATIONS))
         .isInstanceOf(TransitionNotPermittedException.class);
+  }
+
+  @Test
+  void financeQueueShowsWhoInspectedTheItemsAndTheRefundKey() {
+    awaitFinance();
+    when(staffUserRepository.findById(AGENT_ID))
+        .thenReturn(
+            Optional.of(
+                new StaffUser(
+                    AGENT_ID,
+                    "riya@returnright.example",
+                    "Riya Kapoor",
+                    Role.WAREHOUSE_AGENT,
+                    "x",
+                    true)));
+    when(returnRequestRepository.findByStatusOrderByCreatedAtAsc(
+            ReturnStatus.AWAITING_FINANCE_APPROVAL))
+        .thenReturn(List.of(returnRequest));
+
+    FinanceQueueItemResponse item = service.refundsAwaitingFinance().get(0);
+
+    assertThat(item.inspectedByName()).isEqualTo("Riya Kapoor");
+    assertThat(item.itemNames()).containsExactly("Laptop 14\"");
+    assertThat(item.grade()).isEqualTo(InspectionGrade.A);
+    assertThat(item.partiallyAccepted()).isFalse();
+    assertThat(item.customerFlagged()).isTrue();
+    assertThat(item.refundKey()).isEqualTo("return-" + returnRequest.getId());
   }
 
   @Test
@@ -193,7 +246,8 @@ class ReviewServiceImplTest {
   private void awaitFinance() {
     returnRequest.moveTo(ReturnStatus.APPROVED, NOW, Role.SYSTEM, null);
     returnRequest.moveTo(ReturnStatus.RECEIVED, NOW, Role.WAREHOUSE_AGENT, null);
-    returnRequest.recordInspection(UUID.randomUUID(), NOW, 5_499_900);
+    returnRequest.getItems().get(0).recordInspection(InspectionGrade.A, 1, null, null);
+    returnRequest.recordInspection(AGENT_ID, NOW, 5_499_900);
     returnRequest.moveTo(ReturnStatus.INSPECTED, NOW, Role.WAREHOUSE_AGENT, null);
     returnRequest.moveTo(ReturnStatus.AWAITING_FINANCE_APPROVAL, NOW, Role.SYSTEM, null);
   }

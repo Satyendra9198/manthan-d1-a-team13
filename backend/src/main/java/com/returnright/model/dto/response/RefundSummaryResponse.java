@@ -10,6 +10,9 @@ import java.util.List;
  *
  * @param requestedAmountPaise what the customer asked for before inspection
  * @param refundedAt {@code null} until the money has been paid out
+ * @param financeReview the refund needed a finance review before payment (above ₹10,000); the
+ *     customer page shows a "Refund review" step but never says why
+ * @param reference payment reference once paid; {@code null} before
  * @param explanation one customer-facing sentence per adjustment; empty when refunded in full
  */
 public record RefundSummaryResponse(
@@ -18,4 +21,6 @@ public record RefundSummaryResponse(
     RefundMethod method,
     CustomerRefundStatus status,
     Instant refundedAt,
+    boolean financeReview,
+    String reference,
     List<String> explanation) {}

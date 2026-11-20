@@ -62,7 +62,14 @@ class ReviewControllersTest {
   @Test
   void financeApprovalIsMadeAsTheSignedInReviewer() throws Exception {
     when(reviewService.approveRefund(eq(RMA), any(StaffActor.class)))
-        .thenReturn(new ReviewDecisionResponse(RMA, ReturnStatus.REFUNDED, RefundStatus.SUCCEEDED));
+        .thenReturn(
+            new ReviewDecisionResponse(
+                RMA,
+                ReturnStatus.REFUNDED,
+                RefundStatus.SUCCEEDED,
+                5_499_900L,
+                "MOCK-TXN-000001",
+                null));
 
     mockMvc
         .perform(
@@ -110,7 +117,7 @@ class ReviewControllersTest {
   @Test
   void operationsDeclineIsPassedOnWithTheNote() throws Exception {
     when(reviewService.declineReturn(eq(RMA), eq("Repeated wear"), any(StaffActor.class)))
-        .thenReturn(new ReviewDecisionResponse(RMA, ReturnStatus.REJECTED, null));
+        .thenReturn(new ReviewDecisionResponse(RMA, ReturnStatus.REJECTED, null, null, null, null));
 
     mockMvc
         .perform(

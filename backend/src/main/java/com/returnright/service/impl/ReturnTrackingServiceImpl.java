@@ -9,6 +9,7 @@ import com.returnright.model.dto.response.ReturnLabelResponse;
 import com.returnright.model.dto.response.ReturnTrackingResponse;
 import com.returnright.model.dto.response.TimelineEntryResponse;
 import com.returnright.model.dto.response.TrackedItemResponse;
+import com.returnright.model.entity.Refund;
 import com.returnright.model.entity.ReturnItem;
 import com.returnright.model.entity.ReturnRequest;
 import com.returnright.model.entity.ReturnStatusChange;
@@ -18,6 +19,7 @@ import com.returnright.model.enums.InspectionGrade;
 import com.returnright.model.enums.RefundMethod;
 import com.returnright.model.enums.ReturnStatus;
 import com.returnright.model.enums.TimelineEntryState;
+import com.returnright.repository.RefundRepository;
 import com.returnright.repository.ReturnRequestRepository;
 import com.returnright.service.RefundCalculationService;
 import com.returnright.service.ReturnStateMachineService;
@@ -69,11 +71,14 @@ public class ReturnTrackingServiceImpl implements ReturnTrackingService {
   private final ReturnRequestRepository returnRequestRepository;
   private final ReturnStateMachineService returnStateMachineService;
   private final RefundCalculationService refundCalculationService;
+  private final RefundRepository refundRepository;
 
   public ReturnTrackingServiceImpl(
       ReturnRequestRepository returnRequestRepository,
       ReturnStateMachineService returnStateMachineService,
-      RefundCalculationService refundCalculationService) {
+      RefundCalculationService refundCalculationService,
+      RefundRepository refundRepository) {
+    this.refundRepository = refundRepository;
     this.returnRequestRepository = returnRequestRepository;
     this.returnStateMachineService = returnStateMachineService;
     this.refundCalculationService = refundCalculationService;
@@ -158,10 +163,23 @@ public class ReturnTrackingServiceImpl implements ReturnTrackingService {
         unitPricePaise * item.getQuantity(),
         item.getGrade(),
         item.getAcceptedQuantity(),
-        item.getAcceptedQuantity() == null ? null : lineRefund(item));
+        item.getAcceptedQuantity() == null ? null : lineRefund(item),
+        item.getRejectionReason(),
+        reduced(item) ? item.getInspectionNote() : null);
+  }
+
+  /** The line refunds less than its full price: grade C, fewer units, or a chosen amount. */
+  private static boolean reduced(ReturnItem item) {
+    return item.getAcceptedQuantity() != null
+        && (item.getAcceptedQuantity() < item.getQuantity()
+            || item.getRefundOverridePaise() != null
+            || (item.getGrade() != null && item.getGrade().getRefundPercent() < 100));
   }
 
   private long lineRefund(ReturnItem item) {
+    if (item.getRefundOverridePaise() != null) {
+      return item.getRefundOverridePaise();
+    }
     InspectionGrade grade = item.getGrade() == null ? InspectionGrade.A : item.getGrade();
     return refundCalculationService.lineRefundPaise(
         new InspectedLine(
@@ -207,6 +225,14 @@ public class ReturnTrackingServiceImpl implements ReturnTrackingService {
         returnRequest.getRefundMethod(),
         refunded ? CustomerRefundStatus.REFUNDED : CustomerRefundStatus.PROCESSING,
         refundedAt,
+        returnRequest.getStatusHistory().stream()
+            .anyMatch(change -> change.getStatus() == ReturnStatus.AWAITING_FINANCE_APPROVAL),
+        refunded
+            ? refundRepository
+                .findByReturnId(returnRequest.getId())
+                .map(Refund::getGatewayTransactionId)
+                .orElse(null)
+            : null,
         explanation(returnRequest));
   }
 

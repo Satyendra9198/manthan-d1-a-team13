@@ -33,6 +33,7 @@ import com.returnright.service.RefundPayoutService;
 import com.returnright.service.ReturnStateMachineService;
 import com.returnright.service.WarehouseReturnService;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -364,6 +365,13 @@ public class WarehouseReturnServiceImpl implements WarehouseReturnService {
         returnRequest.getStatus(),
         returnRequest.getOrder().getOrderNumber(),
         returnRequest.getOrder().getCustomerName(),
+        returnRequest.isFlaggedForReview(),
+        returnRequestRepository
+            .findRequestTimes(
+                returnRequest.getCustomerEmail(),
+                ReturnStatus.CANCELLED,
+                clock.instant().minus(Duration.ofDays(30)))
+            .size(),
         returnRequest.getRefundMethod(),
         returnRequest.getCreatedAt(),
         receivedAt,

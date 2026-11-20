@@ -13,6 +13,7 @@ import com.returnright.model.dto.response.ReturnTrackingResponse;
 import com.returnright.model.dto.response.TimelineEntryResponse;
 import com.returnright.model.entity.CustomerOrder;
 import com.returnright.model.entity.OrderItem;
+import com.returnright.model.entity.Refund;
 import com.returnright.model.entity.ReturnItem;
 import com.returnright.model.entity.ReturnRequest;
 import com.returnright.model.enums.CustomerRefundStatus;
@@ -20,11 +21,13 @@ import com.returnright.model.enums.CustomerTimelineStep;
 import com.returnright.model.enums.InspectionGrade;
 import com.returnright.model.enums.ProductCategory;
 import com.returnright.model.enums.RefundMethod;
+import com.returnright.model.enums.RefundStatus;
 import com.returnright.model.enums.RejectionReason;
 import com.returnright.model.enums.ReturnReason;
 import com.returnright.model.enums.ReturnStatus;
 import com.returnright.model.enums.Role;
 import com.returnright.model.enums.TimelineEntryState;
+import com.returnright.repository.RefundRepository;
 import com.returnright.repository.ReturnRequestRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,12 +49,14 @@ class ReturnTrackingServiceImplTest {
 
   private final ReturnRequestRepository returnRequestRepository =
       mock(ReturnRequestRepository.class);
+  private final RefundRepository refundRepository = mock(RefundRepository.class);
 
   private final ReturnTrackingServiceImpl service =
       new ReturnTrackingServiceImpl(
           returnRequestRepository,
           new ReturnStateMachineServiceImpl(),
-          new RefundCalculationServiceImpl());
+          new RefundCalculationServiceImpl(),
+          refundRepository);
 
   private ReturnRequest returnRequest;
   private ReturnItem shirtLine;
@@ -148,6 +153,69 @@ class ReturnTrackingServiceImplTest {
             "Linen shirt: graded C at inspection (visible wear or damage), so it is refunded at"
                 + " 50%.");
     assertThat(response.items().get(0).refundPaise()).isEqualTo(94_950);
+  }
+
+  @Test
+  void refundedReturnShowsThePaymentReferenceAndTheInspectorsNote() {
+    inspectAndRefund(InspectionGrade.C, 1, null);
+    shirtLine.recordInspection(InspectionGrade.C, 1, null, "Light stain on the cuff");
+    when(refundRepository.findByReturnId(returnRequest.getId()))
+        .thenReturn(
+            Optional.of(
+                new Refund(
+                    UUID.randomUUID(),
+                    returnRequest.getId(),
+                    94_950,
+                    RefundMethod.ORIGINAL_PAYMENT,
+                    "return-" + returnRequest.getId(),
+                    RefundStatus.SUCCEEDED,
+                    "MOCK-TXN-000042",
+                    null)));
+
+    ReturnTrackingResponse response = track();
+
+    assertThat(response.refund().reference()).isEqualTo("MOCK-TXN-000042");
+    assertThat(response.refund().financeReview()).isFalse();
+    assertThat(response.items().get(0).inspectionNote()).isEqualTo("Light stain on the cuff");
+  }
+
+  @Test
+  void inspectorsNoteStaysInternalWhenTheItemIsRefundedInFull() {
+    inspectAndRefund(InspectionGrade.A, 1, null);
+    shirtLine.recordInspection(InspectionGrade.A, 1, null, "Perfect condition");
+
+    assertThat(track().items().get(0).inspectionNote()).isNull();
+  }
+
+  @Test
+  void partialAcceptByAmountRefundsTheChosenAmount() {
+    returnRequest.moveTo(
+        ReturnStatus.RECEIVED, REQUESTED_AT.plus(days(2)), Role.WAREHOUSE_AGENT, AGENT_ID);
+    shirtLine.recordInspection(
+        InspectionGrade.B, 1, RejectionReason.OTHER, "Original box missing", 120_000L);
+    returnRequest.recordInspection(AGENT_ID, REQUESTED_AT.plus(days(3)), 120_000);
+    returnRequest.moveTo(
+        ReturnStatus.INSPECTED, REQUESTED_AT.plus(days(3)), Role.WAREHOUSE_AGENT, AGENT_ID);
+    returnRequest.moveTo(
+        ReturnStatus.REFUND_PENDING, REQUESTED_AT.plus(days(3)), Role.SYSTEM, null);
+
+    ReturnTrackingResponse response = track();
+
+    assertThat(response.items().get(0).refundPaise()).isEqualTo(120_000);
+    assertThat(response.items().get(0).rejectionReason()).isEqualTo(RejectionReason.OTHER);
+    assertThat(response.items().get(0).inspectionNote()).isEqualTo("Original box missing");
+  }
+
+  @Test
+  void refundAboveTheThresholdIsMarkedAsReviewedByFinance() {
+    returnRequest.moveTo(
+        ReturnStatus.RECEIVED, REQUESTED_AT.plus(days(2)), Role.WAREHOUSE_AGENT, AGENT_ID);
+    shirtLine.recordInspection(InspectionGrade.A, 1, null, null);
+    returnRequest.recordInspection(AGENT_ID, REQUESTED_AT.plus(days(3)), 189_900);
+    returnRequest.moveTo(
+        ReturnStatus.AWAITING_FINANCE_APPROVAL, REQUESTED_AT.plus(days(3)), Role.SYSTEM, null);
+
+    assertThat(track().refund().financeReview()).isTrue();
   }
 
   @Test

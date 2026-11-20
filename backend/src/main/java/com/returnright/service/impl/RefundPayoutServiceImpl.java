@@ -104,7 +104,7 @@ public class RefundPayoutServiceImpl implements RefundPayoutService {
   }
 
   /** One key per return, so every attempt for the return reaches the gateway with the same key. */
-  static String refundKeyFor(UUID returnId) {
+  public static String refundKeyFor(UUID returnId) {
     return "return-" + returnId;
   }
 }
