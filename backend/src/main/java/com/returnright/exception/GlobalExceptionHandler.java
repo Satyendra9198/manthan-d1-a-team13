@@ -6,9 +6,12 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /** Maps exceptions to the shared {@link ErrorResponse} format. */
 @RestControllerAdvice
@@ -42,6 +45,37 @@ public class GlobalExceptionHandler {
         "MALFORMED_REQUEST",
         "Request body is missing or is not valid JSON of the expected shape",
         List.of());
+  }
+
+  @ExceptionHandler(InvalidPhotosException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidPhotos(InvalidPhotosException ex) {
+    return error(
+        HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_PHOTOS", ex.getMessage(), ex.getProblems());
+  }
+
+  @ExceptionHandler(MissingServletRequestPartException.class)
+  public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException ex) {
+    return error(
+        HttpStatus.BAD_REQUEST,
+        "MISSING_PART",
+        "Required part '" + ex.getRequestPartName() + "' is missing",
+        List.of());
+  }
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+    return error(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        "UPLOAD_TOO_LARGE",
+        "Each photo must be 5 MB or smaller, and the whole upload 40 MB or smaller",
+        List.of());
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(
+      HttpMediaTypeNotSupportedException ex) {
+    return error(
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE", ex.getMessage(), List.of());
   }
 
   @ExceptionHandler(IllegalTransitionException.class)
