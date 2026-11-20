@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.returnright.config.ClockConfig;
 import com.returnright.exception.ItemSelectionRejectedException;
 import com.returnright.exception.OrderNotFoundException;
 import com.returnright.model.dto.request.ItemSelectionRequest;
@@ -20,6 +19,7 @@ import com.returnright.model.enums.EligibilityReason;
 import com.returnright.model.enums.ProductCategory;
 import com.returnright.service.ItemSelectionService;
 import com.returnright.service.OrderLookupService;
+import com.returnright.support.WithApiSecurity;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,13 +27,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CustomerOrderController.class)
-@Import(ClockConfig.class)
+@WithApiSecurity
 class CustomerOrderControllerTest {
 
   private static final String LOOKUP_URL = "/api/v1/customer/orders/lookup";

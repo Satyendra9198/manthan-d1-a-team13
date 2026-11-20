@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.returnright.config.ClockConfig;
 import com.returnright.exception.InvalidPhotosException;
 import com.returnright.model.domain.PhotoUpload;
 import com.returnright.model.dto.request.SubmitReturnRequest;
@@ -22,6 +21,7 @@ import com.returnright.model.enums.RefundMethod;
 import com.returnright.model.enums.ReturnReason;
 import com.returnright.service.ReturnSubmissionService;
 import com.returnright.support.TestImages;
+import com.returnright.support.WithApiSecurity;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -30,14 +30,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CustomerReturnController.class)
-@Import(ClockConfig.class)
+@WithApiSecurity
 class CustomerReturnControllerTest {
 
   private static final String RETURNS_URL = "/api/v1/customer/returns";
