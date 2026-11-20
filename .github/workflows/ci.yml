@@ -1,0 +1,97 @@
+# CI for ReturnRight (CLAUDE.md "Testing expectations"). Versions match the hackathon prerequisites guide:
+# JDK 21 (Temurin), Node 26.13.1, Python 3.13, PostgreSQL 18 (Testcontainers / compose).
+name: CI
+
+on:
+  push:
+    branches: [main, dev, "feature/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    name: ${{ matrix.service }} (mvnw verify)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, gateway, notifier]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: ${{ matrix.service }}/pom.xml
+      # backend runs Testcontainers (Postgres 18 + Redis); Docker is available on ubuntu-latest.
+      - run: ./mvnw -B verify
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/surefire-reports
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.13.1"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  e2e:
+    name: end-to-end (compose + seed + API scenario + Playwright)
+    needs: [java, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+      - name: Seed golden data
+        run: docker compose run --rm app --spring.profiles.active=seed --seed.as-of="$(TZ=Asia/Kolkata date +%F)" --seed.reset=true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: API scenario
+        run: python tests/e2e-api/scenario.py http://localhost:8000
+      - name: Re-seed (the API scenario consumes golden cases)
+        run: docker compose run --rm app --spring.profiles.active=seed --seed.as-of="$(TZ=Asia/Kolkata date +%F)" --seed.reset=true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.13.1"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - if: failure()
+        run: docker compose logs --no-color > compose-logs.txt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports
+          path: |
+            frontend/playwright-report
+            compose-logs.txt
+          if-no-files-found: ignore
+      - if: always()
+        run: docker compose down -v
