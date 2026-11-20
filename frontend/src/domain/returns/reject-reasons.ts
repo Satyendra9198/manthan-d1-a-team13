@@ -7,7 +7,13 @@ export const REJECT_REASONS = [
   'other',
 ] as const
 
-export type RejectReason = (typeof REJECT_REASONS)[number]
+/** Used only when finance declines a refund after review. Not offered to agents. */
+export const FINANCE_DECLINE_REASON = 'declined_after_review'
+
+/** Reasons an agent may pick. */
+export type AgentRejectReason = (typeof REJECT_REASONS)[number]
+
+export type RejectReason = AgentRejectReason | typeof FINANCE_DECLINE_REASON
 
 export const REJECT_REASON_LABELS: Record<RejectReason, string> = {
   not_as_described: 'Not as described',
@@ -15,6 +21,7 @@ export const REJECT_REASON_LABELS: Record<RejectReason, string> = {
   missing_parts_or_tags: 'Missing parts or tags',
   outside_return_window: 'Outside return window',
   other: 'Other',
+  declined_after_review: 'Refund declined after review',
 }
 
 /** "Other" means nothing to the customer on its own, so it needs a note. */

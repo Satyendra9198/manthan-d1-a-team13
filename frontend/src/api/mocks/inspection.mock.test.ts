@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../client'
-import { getMockAuditLog, getMockLedger, inspectionMock as api } from './inspection.mock'
+import { getMockAuditLog, getNewPayments, inspectionMock as api } from './inspection.mock'
 
 const LINEN = { id: 'ret_00731', qr: 'rr-qr-7f3a9c41' }
 const HEADPHONES = { id: 'ret_00742', qr: 'rr-qr-1b2c3d4e' }
@@ -20,8 +20,8 @@ describe('mock backend: duplicate-refund prevention', () => {
     const first = await api.submitDecision(LINEN.id, accept, 'key-1')
     const retry = await api.submitDecision(LINEN.id, accept, 'key-1')
     expect(retry).toEqual(first)
-    expect(getMockLedger()).toHaveLength(1)
-    expect(getMockLedger()[0]).toMatchObject({ returnId: LINEN.id, amountPaise: 94_950 })
+    expect(getNewPayments()).toHaveLength(1)
+    expect(getNewPayments()[0]).toMatchObject({ returnId: LINEN.id, amountPaise: 94_950 })
   })
 
   it('two parallel clicks with the same key still pay once', async () => {
@@ -29,13 +29,13 @@ describe('mock backend: duplicate-refund prevention', () => {
       api.submitDecision(LINEN.id, accept, 'key-1'),
       api.submitDecision(LINEN.id, accept, 'key-1'),
     ]).catch(() => {})
-    expect(getMockLedger()).toHaveLength(1)
+    expect(getNewPayments()).toHaveLength(1)
   })
 
   it('a second decision with a new key is refused', async () => {
     await api.submitDecision(LINEN.id, accept, 'key-1')
     expect(await code(api.submitDecision(LINEN.id, accept, 'key-2'))).toBe('RETURN_NOT_INSPECTABLE')
-    expect(getMockLedger()).toHaveLength(1)
+    expect(getNewPayments()).toHaveLength(1)
   })
 
   it('reusing a key for a different decision is refused', async () => {
@@ -65,7 +65,7 @@ describe('mock backend: rules', () => {
       refundAmountPaise: 2_499_900,
       requiresFinanceApproval: true,
     })
-    expect(getMockLedger()).toHaveLength(0)
+    expect(getNewPayments()).toHaveLength(0)
   })
 
   it('sends a flagged customer to finance even under ₹10,000', async () => {
@@ -76,14 +76,14 @@ describe('mock backend: rules', () => {
       'k',
     )
     expect(res).toMatchObject({ outcome: 'sent_to_finance', requiresFinanceApproval: true })
-    expect(getMockLedger()).toHaveLength(0)
+    expect(getNewPayments()).toHaveLength(0)
   })
 
   it("trusts its own routing, not the client's flag", async () => {
     await api.scanReturn({ qrCode: HEADPHONES.qr })
     const res = await api.submitDecision(HEADPHONES.id, { ...accept, grade: 'A', requiresFinanceApproval: false }, 'k')
     expect(res.requiresFinanceApproval).toBe(true)
-    expect(getMockLedger()).toHaveLength(0)
+    expect(getNewPayments()).toHaveLength(0)
   })
 
   it('requires a grade to accept', async () => {
@@ -113,7 +113,7 @@ describe('mock backend: rules', () => {
     it('pays the agreed amount', async () => {
       const res = await api.submitDecision(LINEN.id, { ...partial, refundAmountPaise: 100_000 }, 'k')
       expect(res).toMatchObject({ outcome: 'refund_initiated', refundAmountPaise: 100_000 })
-      expect(getMockLedger()[0].amountPaise).toBe(100_000)
+      expect(getNewPayments()[0].amountPaise).toBe(100_000)
     })
 
     it.each([0, -1, 189_901])('rejects amount %i', async (amount) => {
