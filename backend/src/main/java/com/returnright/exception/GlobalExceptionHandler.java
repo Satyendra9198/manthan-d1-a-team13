@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
     return error(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", ex.getMessage(), List.of());
   }
 
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
+    return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), List.of());
+  }
+
   @ExceptionHandler(ItemSelectionRejectedException.class)
   public ResponseEntity<ErrorResponse> handleItemSelectionRejected(
       ItemSelectionRejectedException ex) {
