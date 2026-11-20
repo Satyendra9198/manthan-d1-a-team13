@@ -46,6 +46,7 @@
 | A-26 | How are notifications sent? | email · in-app | A **`notifications` table** shown in the portal, plus a structured log line. No SMTP. | Free, offline, demoable. |
 | A-27 | Is the gateway call sync or async? | sync after commit · queue | **Synchronous, after the DB commit, with a 3 s timeout.** A background reconciler covers crashes and timeouts. | There is no queue infrastructure, and this is deterministic for tests. |
 | A-28 | Currency? | — | **INR only.** | Brief. |
+| A-29 | Do successful customer logins count toward the per-order lookup limit? | count all · count failures only | **Failures only.** 10 failed lookups per order number per hour lock that order's lookup for the rest of the hour. Successful lookups never count. The per-IP limit (5/min) still counts every attempt. *(Team decision, 2026-11-20.)* | The limit exists to stop email guessing. Counting successes locked real customers out after 10 logins in an hour. |
 
 ---
 

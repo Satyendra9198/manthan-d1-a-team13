@@ -97,6 +97,6 @@ docs/       architecture, ADRs, API contract, demo data
 - **`./mvnw: permission denied`** on Linux/macOS: `git update-index --chmod=+x` is already set; re-clone or `chmod +x mvnw`.
 - **Docker Hub `TLS handshake timeout`** during a build: a network blip; run the same command again.
 - **Seed says "Database already has data"**: add `--seed.reset=true`.
-- **Customer login says "Too many attempts"** (429): order lookup is limited to 5/min per IP and 10/hour per order
+- **Customer login says "Too many attempts"** (429): order lookup is limited to 5/min per IP and 10 failed lookups/hour per order [A-29]
   number. Re-seeding with `--seed.reset=true` also clears these counters, or wait for `retry_after_seconds`.
 - **Playwright browser download blocked**: `$env:E2E_CHANNEL='msedge'; npx playwright test` uses the installed Edge.

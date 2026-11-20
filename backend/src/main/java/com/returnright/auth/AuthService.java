@@ -60,16 +60,26 @@ public class AuthService {
         this.dummyHash = encoder.encode(UUID.randomUUID().toString()); // equalises timing for unknown users
     }
 
+    /** [A-29] Failed customer lookups allowed per order number per hour. */
+    static final int LOOKUP_FAILURES_PER_ORDER_PER_HOUR = 10;
+
     @Transactional(readOnly = true)
     public Session customerLookup(String orderNumber, String email, String clientIp) {
         String on = orderNumber == null ? "" : orderNumber.strip().toUpperCase(Locale.ROOT);
         rateLimit("rl:lookup:ip:" + clientIp, props.security().lookupPerMinute(), Duration.ofMinutes(1),
                 "Too many attempts. Please wait a minute and try again.");
-        rateLimit("rl:lookup:order:" + on, 10, Duration.ofHours(1),
-                "Too many attempts for this order. Please try again in an hour, or contact support.");
+        // [A-29] the per-order limit counts FAILED lookups only: it exists to stop email guessing, and must not lock
+        // out a real customer who signs in many times. The per-IP limit above still counts every attempt.
+        String failKey = "rl:lookup:order-fail:" + on;
+        if (kv.get(failKey) >= LOOKUP_FAILURES_PER_ORDER_PER_HOUR) {
+            throw new ApiException("RATE_LIMITED",
+                    "Too many attempts for this order. Please try again in an hour, or contact support.",
+                    HttpStatus.TOO_MANY_REQUESTS, Map.of("retry_after_seconds", Math.max(1, kv.ttlSeconds(failKey))));
+        }
         Order o = orders.findByOrderNumber(on).orElse(null);
         Customer c = o == null ? null : o.getCustomer();
         if (c == null || email == null || !c.getEmail().equalsIgnoreCase(email.strip())) {
+            kv.incrementWindow(failKey, Duration.ofHours(1));
             metrics.loginFailure("customer_lookup");
             // generic message: never reveal whether the order number or the email was wrong
             throw new ApiException("NOT_FOUND", "We couldn't find an order with those details.", HttpStatus.NOT_FOUND);

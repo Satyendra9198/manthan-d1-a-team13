@@ -78,7 +78,7 @@ not exist), CI, Locust load test, README, `docs/demo-data.md`.
 ## 5. Traps already hit (save yourself the time)
 
 - **Windows checkout + line endings**: the repo is LF (`.gitattributes`). Don't "fix" CRLF diffs by hand.
-- **Rate limits during testing**: customer lookup is 5/min per IP and 10/hour per order. Always re-seed with
+- **Rate limits during testing**: customer lookup is 5/min per IP and 10 failed lookups/hour per order [A-29]. Always re-seed with
   `--seed.reset=true` before Playwright; it clears the counters.
 - **Compose project name is `returnright`** (set in `docker-compose.yml`). Another compose file with the same name on
   the same machine will fight over containers.

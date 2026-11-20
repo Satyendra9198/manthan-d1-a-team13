@@ -28,6 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<argLine></argLine>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -180,6 +181,15 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<!-- Tests do not go through main(): pin UTC so laptops in IST (JVM alias "Asia/Calcutta", rejected by
+				     PostgreSQL 18) behave like CI. Business-day rules use Asia/Kolkata explicitly. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{argLine} -Duser.timezone=UTC</argLine>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

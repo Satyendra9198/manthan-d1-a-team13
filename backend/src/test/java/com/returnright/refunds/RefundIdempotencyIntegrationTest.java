@@ -212,10 +212,16 @@ class RefundIdempotencyIntegrationTest {
 
     @Test
     @Order(7)
-    void perOrderLookupLimitSaysAnHourAndIsClearedByAReset() throws Exception {   // Part 2 §11: 10/hour per order
+    void perOrderLookupLimitCountsOnlyFailuresSaysAnHourAndIsClearedByAReset() throws Exception {   // [A-29]
         Map<String, Object> body = Map.of("order_number", "RR-EDGE-017", "email", EDGE_EMAIL);
-        for (int i = 0; i < 10; i++) {
+        Map<String, Object> wrong = Map.of("order_number", "RR-EDGE-017", "email", "guess@example.com");
+        // successful logins never consume the per-order budget
+        for (int i = 0; i < 12; i++) {
             assertThat(post(null, "/auth/customer/lookup", body, Map.of()).status()).isEqualTo(200);
+        }
+        // 10 failed guesses lock the order for the hour, even for the right email
+        for (int i = 0; i < 10; i++) {
+            assertThat(post(null, "/auth/customer/lookup", wrong, Map.of()).status()).isEqualTo(404);
         }
 
         Res limited = post(null, "/auth/customer/lookup", body, Map.of());

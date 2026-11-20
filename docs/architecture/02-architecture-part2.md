@@ -252,7 +252,7 @@ Customers get a redacted view: no `attempts`, no `requires_finance_review`, no f
 
 **Customer lookup.** `POST /auth/customer/lookup` with `order_number` + `email` checks `orders.order_number = :n AND lower(customers.email) = lower(:e)`. On success it issues a token scoped to that customer, who can then see **all** their orders ([A-24]).
 - On failure it always returns the same `404 NOT_FOUND`: "We couldn't find an order with those details." It never reveals which field was wrong.
-- Rate limit: 5 attempts/min per IP and 10/hour per order number (in-memory token bucket; fine for one app process).
+- Rate limit: 5 attempts/min per IP (every attempt) and 10 **failed** lookups/hour per order number [A-29] (Redis counters with an in-memory fallback).
 
 **Backend guards** (the authority):
 - `Depends(require_roles(Role.FINANCE_REVIEWER))` on each router or endpoint. Routers are grouped by prefix, so each prefix gets one guard: `/customer/*` → CUSTOMER, `/warehouse/*` → WAREHOUSE_AGENT, `/finance/*` → FINANCE_REVIEWER, `/ops/*` + `/analytics/*` → OPS_MANAGER (with the listed exceptions).
