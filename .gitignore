@@ -1,0 +1,13 @@
+.idea/
+*.iml
+.vscode/
+.env
+node_modules/
+target/
+dist/
+gateway/data/
+backend/data/
+*.log
+playwright-report/
+test-results/
+__pycache__/

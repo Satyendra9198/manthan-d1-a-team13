@@ -1,5 +1,7 @@
 # ReturnRight — Architecture, Part 1 (Assumptions + Deliverables 1–8)
 
+> **Implementation stack:** Java 21 + Spring Boot 4.1 (see [ADR-002](../adr/ADR-002-java-spring-stack-and-platform-services.md)). Python/FastAPI library names below are design-time placeholders; ADR-002 gives the Spring equivalent. The domain rules are unchanged.
+
 > Status: **Draft v0.1** · Phase: Architecture (no application code) · Date: 2026-11-20
 > Deliverable 8 (ADR-001) is in [../adr/ADR-001-refund-idempotency.md](../adr/ADR-001-refund-idempotency.md).
 

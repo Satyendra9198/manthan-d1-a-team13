@@ -1,5 +1,7 @@
 # ReturnRight — Architecture, Part 2 (Deliverables 9–20)
 
+> **Implementation stack:** Java 21 + Spring Boot 4.1 (see [ADR-002](../adr/ADR-002-java-spring-stack-and-platform-services.md)). Python/FastAPI library names below are design-time placeholders; ADR-002 gives the Spring equivalent. The domain rules are unchanged.
+
 > Status: **Draft v0.1** · Date: 2026-11-20 · Continues [Part 1](01-architecture-part1.md) (assumptions A-nn, transitions T-nn, failure modes F-nn, DB rules BR-nn).
 > Deliverable 18 (draft CLAUDE.md) is at the repo root: [../../CLAUDE.md](../../CLAUDE.md).
 
