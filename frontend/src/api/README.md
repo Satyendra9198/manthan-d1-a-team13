@@ -4,7 +4,33 @@
 - `types.ts` defines every request and response payload. **Money is in paise** (₹1,899 → `189900`).
 - `inspection.ts` holds the Scan & inspect endpoints. When `VITE_USE_MOCKS` is not `"false"` it serves `mocks/inspection.mock.ts` instead.
 
-To use the real backend, create `.env.local` with `VITE_USE_MOCKS=false` and `VITE_API_BASE_URL=http://localhost:8080/api`.
+## Running against the real backend
+
+1. Start the backend with demo data: from `backend/`, `mvn spring-boot:run -Dspring-boot.run.profiles=dev` (see `docs/api/README.md`).
+2. Create `frontend/.env.local` with `VITE_USE_MOCKS=false` (keep `VITE_API_BASE_URL=/api/v1`).
+3. `npm run dev`. The dev server proxies `/api` to `http://localhost:8080`.
+4. Staff screens now need a sign-in at `/login` (every demo password is `Password@123`):
+   `riya.warehouse@`, `kavya.finance@`, `manoj.ops@` — all `@returnright.example`. Each role only sees its own screens.
+5. Customers track at `/track` with the RMA and the order email, e.g. `RMA-DEMO-00007` + `neha.gupta@example.com`.
+
+The backend's paths and payloads differ from the contract below, which the mocks still follow. `live/mappers.ts` translates between them, so the pages don't change:
+
+| Screen call | Backend |
+| --- | --- |
+| `authApi.login` | `POST /auth/login` |
+| `inspectionApi.scanReturn` | `GET /warehouse/returns/{rma}`, then `POST …/receive` when still approved or in transit |
+| `inspectionApi.submitDecision` | `POST /warehouse/returns/{rma}/inspection` (accept, partial accept) or `…/reject` |
+| `inspectionApi.getTodayStats` | `GET /warehouse/inspections/today` |
+| `inspectionApi.getConfig` | built in (grades and threshold are shared business rules) |
+| `financeApi.*` | `GET /finance/returns/pending`, `POST /finance/returns/{rma}/approve` and `…/decline` |
+| `trackingApi.getTracking` | `POST /customer/returns/track` with the order email |
+| `refundsApi.*` | **not in the backend yet**: stays on demo data with a notice |
+
+Mapping notes:
+
+- The QR code on the return label is the RMA number, and `returnId` on these screens is the RMA number too.
+- A return with several items is shown as one ("Linen shirt + 1 more", price = total). A partial-accept amount is spread over the lines in order.
+- Live end-to-end tests: `npm run test:e2e:live` (needs the backend running with a freshly reset dev seed; uses the installed Chrome).
 
 ## Scan & inspect endpoints
 

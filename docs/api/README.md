@@ -34,6 +34,10 @@ Base URL locally: `http://localhost:8080`. Every error uses the shared `ErrorRes
 
 Ready-to-run requests for every scenario: [returnright.http](returnright.http) (IntelliJ HTTP Client or the VS Code REST Client extension).
 
+## Frontend
+
+The React app in `frontend/` talks to these endpoints when `VITE_USE_MOCKS=false`; see [frontend/src/api/README.md](../../frontend/src/api/README.md) for setup and the call mapping. Sign in at `http://localhost:5173/login`, track returns at `/track`.
+
 ## Running locally with demo data
 
 From `backend/`, with PostgreSQL running and a `returnright` database created:
