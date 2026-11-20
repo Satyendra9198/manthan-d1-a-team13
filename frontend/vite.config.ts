@@ -24,6 +24,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Unit tests always run on the in-browser mocks, even when .env.local points the app at the backend.
+    env: { VITE_USE_MOCKS: 'true' },
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
   },
