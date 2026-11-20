@@ -1,10 +1,50 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import App from './App'
+import { NAV_ITEMS } from '@/config/navigation'
+import { routes } from '@/router'
 
-describe('<App />', () => {
-  it('opens on the customer return wizard', () => {
-    render(<App />)
-    expect(screen.getByRole('heading', { name: 'Start a return' })).toBeInTheDocument()
+function renderAt(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
+  render(<RouterProvider router={router} />)
+  return router
+}
+
+describe('App layout & navigation', () => {
+  it('redirects / to Scan & inspect and marks it active', async () => {
+    const router = renderAt('/')
+    expect(await screen.findByRole('heading', { name: 'Scan and inspect' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/scan')
+    expect(screen.getByRole('link', { name: 'Scan & inspect' })).toHaveAttribute('aria-current', 'page')
+    expect(await screen.findByText(/Today: \d+ inspected/)).toBeInTheDocument()
+  })
+
+  it('renders every sidebar item as a link', () => {
+    renderAt('/scan')
+    for (const item of NAV_ITEMS) {
+      expect(screen.getByRole('link', { name: item.label })).toHaveAttribute('href', item.path)
+    }
+    expect(screen.getByText('Warehouse agent')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Finance queue', '/finance', 'Refunds awaiting approval', 'Finance reviewer'],
+    ['Refunds & ledger', '/refunds', 'Refunds and ledger', 'Finance reviewer'],
+    ['Dashboard', '/dashboard', 'Dashboard', 'Operations manager'],
+    ['Audit log', '/audit', 'Audit log', 'Operations manager'],
+  ])('clicking %s opens %s', async (label, path, heading, persona) => {
+    const user = userEvent.setup()
+    const router = renderAt('/scan')
+    await user.click(screen.getByRole('link', { name: label }))
+    expect(router.state.location.pathname).toBe(path)
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText(persona)).toBeInTheDocument()
+  })
+
+  it('redirects unknown URLs to the default screen', () => {
+    const router = renderAt('/nope')
+    expect(router.state.location.pathname).toBe('/scan')
   })
 })

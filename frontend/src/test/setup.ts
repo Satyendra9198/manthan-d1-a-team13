@@ -6,3 +6,15 @@ afterEach(() => {
   cleanup()
   localStorage.clear()
 })
+
+// Fresh mock backend for every test.
+import { beforeEach } from 'vitest'
+import { resetInspectionMock } from '@/api/mocks/inspection.mock'
+beforeEach(() => resetInspectionMock())
+
+// jsdom has no ResizeObserver; Radix (radio group, etc.) needs one.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
