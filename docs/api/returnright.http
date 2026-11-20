@@ -1,0 +1,173 @@
+### ReturnRight customer API — local test requests
+### Run from IntelliJ (HTTP Client) or VS Code (REST Client extension).
+### Needs the backend running with the dev profile so the demo orders exist (see README.md).
+
+@baseUrl = http://localhost:8080
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### ─── 1. Order lookup ─────────────────────────────────────────────
+
+### 1a. Mixed basket: 2 returnable, 1 window expired, 1 non-returnable
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10482", "email": "aditi.sharma@example.com"}
+
+### 1b. Case and spaces are ignored
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "  rr-10482 ", "email": "Aditi.Sharma@Example.com"}
+
+### 1c. Earlier returns: shoes 1 of 2 left, lamp already returned, speaker returnable again
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10655", "email": "vikram.singh@example.com"}
+
+### 1d. Not delivered yet
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10577", "email": "rahul.verma@example.com"}
+
+### 1e. Every window closed
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10388", "email": "arjun.mehta@example.com"}
+
+### 1f. Wrong email → 404 ORDER_NOT_FOUND
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "RR-10482", "email": "someone.else@example.com"}
+
+### 1g. Invalid input → 400 VALIDATION_FAILED
+POST {{baseUrl}}/api/v1/customer/orders/lookup
+Content-Type: application/json
+
+{"orderNumber": "", "email": "not-an-email"}
+
+### ─── 2. Item selection ───────────────────────────────────────────
+
+### 2a. Valid: 2 of 3 T-shirts + 1 sunscreen
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000001", "quantity": 2},
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1}
+  ]
+}
+
+### 2b. 422: 2 shoes but only 1 left, lamp already returned, item from another order
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10655",
+  "email": "vikram.singh@example.com",
+  "items": [
+    {"itemId": "44444444-0000-0000-0000-000000000001", "quantity": 2},
+    {"itemId": "44444444-0000-0000-0000-000000000002", "quantity": 1},
+    {"itemId": "33333333-0000-0000-0000-000000000004", "quantity": 1}
+  ]
+}
+
+### 2c. 400: empty selection
+POST {{baseUrl}}/api/v1/customer/orders/selection/validate
+Content-Type: application/json
+
+{"orderNumber": "RR-10601", "email": "priya.nair@example.com", "items": []}
+
+### ─── 3. Submit return (multipart) ────────────────────────────────
+### Photos: the file path is relative to this .http file. sample-photo.jpg sits next to it.
+
+### 3a. Approved with label ready: 1 T-shirt, damaged, with a photo
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000001", "quantity": 1,
+     "reason": "DAMAGED_ON_ARRIVAL", "comment": "Hole near the collar."}
+  ],
+  "refundMethod": "ORIGINAL_PAYMENT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary
+Content-Disposition: form-data; name="photos.33333333-0000-0000-0000-000000000001"; filename="sample-photo.jpg"
+Content-Type: image/jpeg
+
+< ./sample-photo.jpg
+--ReturnRightBoundary--
+
+### 3b. Flagged customer (4th return in 30 days) → status REQUESTED, labelReady false
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10702",
+  "email": "meera.iyer@example.com",
+  "items": [
+    {"itemId": "55555555-0000-0000-0000-000000000004", "quantity": 1, "reason": "TOO_BIG"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary--
+
+### 3c. 422 INVALID_PHOTOS: "Not as described" needs at least one photo
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1,
+     "reason": "NOT_AS_DESCRIBED"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": true
+}
+--ReturnRightBoundary--
+
+### 3d. 400 VALIDATION_FAILED: checkbox not ticked
+POST {{baseUrl}}/api/v1/customer/returns
+Content-Type: multipart/form-data; boundary=ReturnRightBoundary
+
+--ReturnRightBoundary
+Content-Disposition: form-data; name="return"
+Content-Type: application/json
+
+{
+  "orderNumber": "RR-10601",
+  "email": "priya.nair@example.com",
+  "items": [
+    {"itemId": "33333333-0000-0000-0000-000000000002", "quantity": 1, "reason": "TOO_BIG"}
+  ],
+  "refundMethod": "STORE_CREDIT",
+  "detailsConfirmed": false
+}
+--ReturnRightBoundary--
