@@ -9,22 +9,31 @@ import { RefundSummary, RejectionNotice, ReviewNotice } from './components/outco
 import { ReturnLabelCard } from './components/return-label-card'
 import { StatusTimeline } from './components/status-timeline'
 import { buildTimeline, isUnderReview, showReturnLabel, statusBadge, subtitle } from './tracking'
+import { forgetTrackEmail, recallTrackEmail, rememberTrackEmail } from '../track-lookup/track-email'
+import { TrackLookupForm } from '../track-lookup/track-lookup-form'
 
 type Loaded =
   | { rma: string; status: 'error'; message: string }
   | { rma: string; status: 'loaded'; data: ReturnTracking }
 
-/** Customer: track one return. Route: /track/:rmaNumber */
+/**
+ * Customer: track one return. Route: /track/:rmaNumber
+ * With the real backend the customer also proves the return is theirs with the order email.
+ */
 export function ReturnStatusPage() {
   const { rmaNumber = '' } = useParams()
+  const [email, setEmail] = useState<string | null>(() =>
+    trackingApi.requiresEmail ? recallTrackEmail(rmaNumber) : '',
+  )
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   // Loading until we have a result for the RMA in the URL.
   const state = loaded?.rma === rmaNumber ? loaded : ({ status: 'loading' } as const)
 
   useEffect(() => {
+    if (email === null) return
     let cancelled = false
     trackingApi
-      .getTracking(rmaNumber)
+      .getTracking(rmaNumber, email)
       .then((data) => !cancelled && setLoaded({ rma: rmaNumber, status: 'loaded', data }))
       .catch(
         (e) =>
@@ -38,10 +47,37 @@ export function ReturnStatusPage() {
     return () => {
       cancelled = true
     }
-  }, [rmaNumber])
+  }, [rmaNumber, email])
+
+  if (email === null) {
+    return (
+      <TrackLookupForm
+        rmaNumber={rmaNumber}
+        onSubmit={(_, typed) => {
+          rememberTrackEmail(rmaNumber, typed)
+          setLoaded(null)
+          setEmail(typed)
+        }}
+      />
+    )
+  }
 
   if (state.status === 'loading') {
     return <p className="py-10 text-center text-sm text-muted-foreground">Loading your return…</p>
+  }
+  if (state.status === 'error' && trackingApi.requiresEmail) {
+    return (
+      <TrackLookupForm
+        rmaNumber={rmaNumber}
+        error={state.message}
+        onSubmit={(_, typed) => {
+          forgetTrackEmail(rmaNumber)
+          rememberTrackEmail(rmaNumber, typed)
+          setLoaded(null)
+          setEmail(typed)
+        }}
+      />
+    )
   }
   if (state.status === 'error') {
     return (
