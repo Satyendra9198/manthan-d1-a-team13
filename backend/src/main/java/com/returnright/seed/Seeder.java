@@ -91,6 +91,7 @@ public class Seeder implements ApplicationRunner {
     private final TransactionTemplate tx;
     private final AppClock clock;
     private final RrProperties props;
+    private final com.returnright.core.KvStore kv;
 
     @Value("${seed.random-seed}") long seed;
     @Value("${seed.as-of:}") String asOfArg;
@@ -112,7 +113,8 @@ public class Seeder implements ApplicationRunner {
                   OrderRepository orders, OrderItemRepository orderItems, User.UserRepository users,
                   ReturnService returnService, InspectionService inspection, FinanceService finance,
                   LabelService labels, LedgerService ledger, AuditService audit, PasswordEncoder encoder,
-                  JdbcTemplate jdbc, TransactionTemplate tx, AppClock clock, RrProperties props) {
+                  JdbcTemplate jdbc, TransactionTemplate tx, AppClock clock, RrProperties props,
+                  com.returnright.core.KvStore kv) {
         this.categories = categories;
         this.products = products;
         this.customers = customers;
@@ -130,6 +132,7 @@ public class Seeder implements ApplicationRunner {
         this.tx = tx;
         this.clock = clock;
         this.props = props;
+        this.kv = kv;
     }
 
     @Override
@@ -169,6 +172,10 @@ public class Seeder implements ApplicationRunner {
                   refund_attempts, refund_items, refunds, finance_reviews, return_labels, return_items, returns,
                   order_items, orders, products, categories, customers, users RESTART IDENTITY CASCADE""");
         jdbc.execute("ALTER SEQUENCE rma_seq RESTART WITH 1000");
+        // A reset is a fresh demo: clear rate limits, failed-login counters and lockouts too (revoked tokens stay
+        // revoked). Otherwise re-seeding within the hour leaves golden orders locked by the 10/hour lookup limit.
+        long cleared = kv.deleteByPrefix("rl:") + kv.deleteByPrefix("fail:") + kv.deleteByPrefix("lock:");
+        log.warn("--seed.reset: cleared {} rate-limit/lockout keys", cleared);
     }
 
     private void gatewayAdmin(String path) {

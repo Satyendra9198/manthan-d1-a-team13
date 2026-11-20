@@ -63,8 +63,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public Session customerLookup(String orderNumber, String email, String clientIp) {
         String on = orderNumber == null ? "" : orderNumber.strip().toUpperCase(Locale.ROOT);
-        rateLimit("rl:lookup:ip:" + clientIp, props.security().lookupPerMinute(), Duration.ofMinutes(1));
-        rateLimit("rl:lookup:order:" + on, 10, Duration.ofHours(1));
+        rateLimit("rl:lookup:ip:" + clientIp, props.security().lookupPerMinute(), Duration.ofMinutes(1),
+                "Too many attempts. Please wait a minute and try again.");
+        rateLimit("rl:lookup:order:" + on, 10, Duration.ofHours(1),
+                "Too many attempts for this order. Please try again in an hour, or contact support.");
         Order o = orders.findByOrderNumber(on).orElse(null);
         Customer c = o == null ? null : o.getCustomer();
         if (c == null || email == null || !c.getEmail().equalsIgnoreCase(email.strip())) {
@@ -85,7 +87,8 @@ public class AuthService {
             throw new ApiException("ACCOUNT_LOCKED", "Too many failed attempts. Try again in %d minutes."
                     .formatted(Math.max(1, kv.ttlSeconds(lockKey) / 60)), HttpStatus.LOCKED);
         }
-        rateLimit("rl:login:ip:" + clientIp, 30, Duration.ofMinutes(1));
+        rateLimit("rl:login:ip:" + clientIp, 30, Duration.ofMinutes(1),
+                "Too many attempts. Please wait a minute and try again.");
         User user = users.findByUsername(u).orElse(null);
         boolean ok = encoder.matches(password == null ? "" : password, user == null ? dummyHash : user.getPasswordHash())
                 && user != null && user.isActive();
@@ -130,10 +133,11 @@ public class AuthService {
         return new Session(token, ttlMinutes * 60L, p);
     }
 
-    private void rateLimit(String key, int max, Duration window) {
+    /** The message names the window that actually tripped (the per-order one is an hour, not a minute). */
+    private void rateLimit(String key, int max, Duration window, String message) {
         if (kv.incrementWindow(key, window) > max) {
-            throw new ApiException("RATE_LIMITED", "Too many attempts. Please wait a minute and try again.",
-                    HttpStatus.TOO_MANY_REQUESTS);
+            throw new ApiException("RATE_LIMITED", message, HttpStatus.TOO_MANY_REQUESTS,
+                    java.util.Map.<String, Object>of("retry_after_seconds", Math.max(1, kv.ttlSeconds(key))));
         }
     }
 

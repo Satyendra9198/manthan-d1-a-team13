@@ -207,6 +207,29 @@ class RefundIdempotencyIntegrationTest {
         assertThat(rec.body()).as(rec.raw()).containsEntry("ok", true);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    com.returnright.core.KvStore kv;
+
+    @Test
+    @Order(7)
+    void perOrderLookupLimitSaysAnHourAndIsClearedByAReset() throws Exception {   // Part 2 §11: 10/hour per order
+        Map<String, Object> body = Map.of("order_number", "RR-EDGE-017", "email", EDGE_EMAIL);
+        for (int i = 0; i < 10; i++) {
+            assertThat(post(null, "/auth/customer/lookup", body, Map.of()).status()).isEqualTo(200);
+        }
+
+        Res limited = post(null, "/auth/customer/lookup", body, Map.of());
+
+        assertThat(limited.status()).isEqualTo(429);
+        Map<String, Object> error = map(limited.body().get("error"));
+        assertThat(error.get("code")).isEqualTo("RATE_LIMITED");
+        assertThat((String) error.get("message")).contains("an hour");
+        assertThat(((Number) map(error.get("details")).get("retry_after_seconds")).longValue()).isBetween(1L, 3600L);
+
+        assertThat(kv.deleteByPrefix("rl:")).isPositive();   // what --seed.reset does
+        assertThat(post(null, "/auth/customer/lookup", body, Map.of()).status()).isEqualTo(200);
+    }
+
     // ------------------------------------------------------------------------------------------------- flow helpers
 
     /** Customer submits every eligible unit, warehouse scans and grades A, completes -> PENDING_FINANCE (> Rs 10k). */

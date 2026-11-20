@@ -27,7 +27,9 @@ public class KvStore {
     public long incrementWindow(String key, Duration window) {
         try {
             Long v = redis.opsForValue().increment(key);
-            if (v != null && v == 1L) {
+            // INCR and EXPIRE are two calls: if the first EXPIRE was lost (crash, timeout) the counter would never
+            // expire and lock the key out for good, so re-arm it whenever it has no TTL.
+            if (v != null && (v == 1L || Long.valueOf(-1L).equals(redis.getExpire(key)))) {
                 redis.expire(key, window);
             }
             return v == null ? 1 : v;
@@ -60,6 +62,22 @@ public class KvStore {
             warn(e);
             long[] cur = memory.get(key);
             return cur == null ? 0 : Math.max(0, (cur[1] - System.currentTimeMillis()) / 1000);
+        }
+    }
+
+    /** Delete every key starting with {@code prefix} (SCAN, not KEYS). Used by the seeder's --seed.reset. */
+    public long deleteByPrefix(String prefix) {
+        memory.keySet().removeIf(k -> k.startsWith(prefix));
+        try {
+            java.util.List<String> keys = new java.util.ArrayList<>();
+            try (var cursor = redis.scan(org.springframework.data.redis.core.ScanOptions.scanOptions()
+                    .match(prefix + "*").count(500).build())) {
+                cursor.forEachRemaining(keys::add);
+            }
+            return keys.isEmpty() ? 0 : redis.delete(keys);
+        } catch (RuntimeException e) {
+            warn(e);
+            return 0;
         }
     }
 
