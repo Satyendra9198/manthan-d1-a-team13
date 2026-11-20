@@ -25,6 +25,15 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-danger: var(--danger);
+    --color-danger-foreground: var(--danger-foreground);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -63,7 +72,18 @@
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+    /* ReturnRight design: solid red action */
+    --destructive: #cc3a30;
+    --destructive-foreground: #ffffff;
+    /* Status badges: soft background + strong text */
+    --info: #dfe8fc;
+    --info-foreground: #2a4ed6;
+    --success: #def7e5;
+    --success-foreground: #2f7a3b;
+    --warning: #fdf0c4;
+    --warning-foreground: #9c5a1c;
+    --danger: #f9dfdf;
+    --danger-foreground: #cc3a30;
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -98,7 +118,16 @@
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
+    --destructive: #d9493f;
+    --destructive-foreground: #ffffff;
+    --info: #1e2a4d;
+    --info-foreground: #9db8ff;
+    --success: #1b3424;
+    --success-foreground: #86d69b;
+    --warning: #3b2e10;
+    --warning-foreground: #f0c76a;
+    --danger: #3d1c1a;
+    --danger-foreground: #f59a92;
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
