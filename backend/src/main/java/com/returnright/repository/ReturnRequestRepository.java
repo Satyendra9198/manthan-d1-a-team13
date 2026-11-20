@@ -38,7 +38,7 @@ public interface ReturnRequestRepository extends JpaRepository<ReturnRequest, UU
   @EntityGraph(attributePaths = {"order", "items", "items.orderItem"})
   Optional<ReturnRequest> findByRmaNumberAndCustomerEmail(String rmaNumber, String customerEmail);
 
-  @EntityGraph(attributePaths = {"order", "items"})
+  @EntityGraph(attributePaths = {"order", "items", "items.orderItem"})
   List<ReturnRequest> findByStatusOrderByCreatedAtAsc(ReturnStatus status);
 
   @Query("select r.id from ReturnRequest r where r.status = :status")
