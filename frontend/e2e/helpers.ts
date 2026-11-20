@@ -9,9 +9,7 @@ function secret(name: string): string {
   if (fromEnv) return fromEnv;
   for (const file of [resolve(process.cwd(), "../.env"), resolve(process.cwd(), ".env")]) {
     if (!existsSync(file)) continue;
-    const line = readFileSync(file, "utf8").split(/
-?
-/).find((l) => l.startsWith(`${name}=`));
+    const line = readFileSync(file, "utf8").split(/\r?\n/).find((l) => l.startsWith(`${name}=`));
     if (line) return line.slice(name.length + 1).trim();
   }
   throw new Error(`${name} is not set (export it or create .env from .env.example)`);
