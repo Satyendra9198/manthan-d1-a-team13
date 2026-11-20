@@ -1,41 +1,49 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import App from './App'
-import { STORAGE_KEY } from './hooks/use-tasks'
+import { NAV_ITEMS } from '@/config/navigation'
+import { routes } from '@/router'
 
-describe('<App />', () => {
-  it('shows the empty state', () => {
-    render(<App />)
-    expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument()
+function renderAt(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
+  render(<RouterProvider router={router} />)
+  return router
+}
+
+describe('App layout & navigation', () => {
+  it('redirects / to Scan & inspect and marks it active', async () => {
+    const router = renderAt('/')
+    expect(await screen.findByRole('heading', { name: 'Scan and inspect' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/scan')
+    expect(screen.getByRole('link', { name: 'Scan & inspect' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('Today: 37 inspected')).toBeInTheDocument()
   })
 
-  it('adds, completes, and deletes a task', async () => {
+  it('renders every sidebar item as a link', () => {
+    renderAt('/scan')
+    for (const item of NAV_ITEMS) {
+      expect(screen.getByRole('link', { name: item.label })).toHaveAttribute('href', item.path)
+    }
+    expect(screen.getByText('Warehouse agent')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Finance queue', '/finance'],
+    ['Refunds & ledger', '/refunds'],
+    ['Dashboard', '/dashboard'],
+    ['Audit log', '/audit'],
+  ])('clicking %s opens %s', async (label, path) => {
     const user = userEvent.setup()
-    render(<App />)
-
-    await user.type(screen.getByLabelText('New task'), 'Write tests{Enter}')
-    expect(screen.getByText('Write tests')).toBeInTheDocument()
-    expect(screen.getByTestId('active-count')).toHaveTextContent('1 active')
-
-    await user.click(screen.getByRole('checkbox'))
-    expect(screen.getByRole('checkbox')).toBeChecked()
-    expect(screen.getByTestId('active-count')).toHaveTextContent('0 active')
-
-    await user.click(screen.getByRole('button', { name: /delete "write tests"/i }))
-    expect(screen.queryByText('Write tests')).not.toBeInTheDocument()
+    const router = renderAt('/scan')
+    await user.click(screen.getByRole('link', { name: label }))
+    expect(router.state.location.pathname).toBe(path)
+    expect(screen.getByRole('heading', { level: 1, name: label })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('disables Add for blank input', () => {
-    render(<App />)
-    expect(screen.getByRole('button', { name: /add/i })).toBeDisabled()
-  })
-
-  it('persists tasks to localStorage', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await user.type(screen.getByLabelText('New task'), 'Persist me{Enter}')
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
-    expect(stored[0].title).toBe('Persist me')
+  it('redirects unknown URLs to the default screen', () => {
+    const router = renderAt('/nope')
+    expect(router.state.location.pathname).toBe('/scan')
   })
 })
