@@ -186,13 +186,15 @@ export function ScanStation() {
           </Card>
 
           <div aria-live="assertive" aria-atomic="true" data-testid="scan-result-region">
-            <AnimatePresence mode="popLayout">
+            {/* "wait": the previous result fully leaves before the next one mounts, so the live region
+                never holds two results (screen readers read one; tests see one). */}
+            <AnimatePresence mode="wait">
               {result && style ? (
                 <motion.div
                   key={result.id}
                   initial={reduce ? false : { opacity: 0, scale: 0.96, y: 12 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
+                  exit={{ opacity: 0, scale: 0.98, transition: { duration: reduce ? 0 : 0.12 } }}
                   transition={{ type: "spring", stiffness: 420, damping: 30 }}
                   className={clsx("rounded-3xl border-2 p-5 sm:p-7", style.ring, style.bg)}
                   data-testid="scan-result"

@@ -5,9 +5,9 @@ WORKDIR /src
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -q -B dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -q -B dependency:go-offline
 COPY src/ src/
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -q -B package -DskipTests && cp target/returnright-api-*.jar /app.jar
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -q -B package -DskipTests && cp target/returnright-api-*.jar /app.jar
 
 # ---- runtime ----
 FROM eclipse-temurin:21-jre-alpine

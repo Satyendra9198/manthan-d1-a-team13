@@ -4,9 +4,9 @@ WORKDIR /src
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -q -B dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -q -B dependency:go-offline
 COPY src/ src/
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -q -B package -DskipTests && cp target/mock-gateway-*.jar /app.jar
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -q -B package -DskipTests && cp target/mock-gateway-*.jar /app.jar
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data

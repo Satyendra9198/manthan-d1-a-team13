@@ -30,7 +30,9 @@ test.describe("customer journey", () => {
     await page.locator('[data-testid="wizard-unit-checkbox"]:not([disabled])').first().check();
     await page.getByTestId("wizard-next").click();
 
-    // Step 2: a reason for every selected unit.
+    // Step 2: a reason for every selected unit. locator.all() does not wait, so wait for the
+    // step to render first; otherwise the loop can run against step 1 and select nothing.
+    await expect(page.getByTestId("wizard-reason").first()).toBeVisible();
     for (const select of await page.getByTestId("wizard-reason").all()) {
       await select.selectOption("SIZE_FIT");
     }
