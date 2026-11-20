@@ -1,0 +1,24 @@
+# Local stack. Run from the repo root:
+#   docker compose -f deploy/docker-compose.yml --env-file backend/.env up -d db
+# The mock gateway, app, Prometheus and Grafana services are added as they are built.
+name: returnright
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: returnright
+      POSTGRES_USER: ${DB_USERNAME:?set DB_USERNAME in backend/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in backend/.env}
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d returnright"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:
